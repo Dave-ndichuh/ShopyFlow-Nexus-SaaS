@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Search, Plus, Minus, Trash2, CreditCard, Loader2, ShoppingCart } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, CreditCard, Loader2, ShoppingCart, Smartphone, Printer } from 'lucide-react';
+import Receipt from '@/components/Receipt';
 
 export default function POSPage() {
   const [products, setProducts] = useState([]);
@@ -10,6 +11,9 @@ export default function POSPage() {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [mpesaPhone, setMpesaPhone] = useState('');
+  const [lastTransaction, setLastTransaction] = useState(null);
 
   const fetchProducts = async () => {
     const { data } = await supabase.from('product').select('*').gt('ON_HAND', 0);
@@ -57,16 +61,38 @@ export default function POSPage() {
 
   const checkout = async () => {
     if (cart.length === 0) return;
+    
+    if (paymentMethod === 'M-Pesa' && (!mpesaPhone || mpesaPhone.length < 9)) {
+      alert("Please enter a valid phone number for M-Pesa (e.g. 0712345678)");
+      return;
+    }
+
     setCheckingOut(true);
 
     try {
+      // --- M-PESA STK PUSH (If selected) ---
+      if (paymentMethod === 'M-Pesa') {
+        const mpesaRes = await fetch('/api/mpesa/stkpush', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: mpesaPhone, amount: grandTotal })
+        });
+        const mpesaData = await mpesaRes.json();
+        
+        if (mpesaData.error) throw new Error(mpesaData.error);
+        
+        // Wait for the customer to put in PIN (Simulated in this demo by just continuing)
+        // In a real app, you would poll the Safaricom Callback URL status here.
+        alert(`M-Pesa STK Prompt sent to ${mpesaPhone}. Awaiting PIN...`);
+      }
+
       // 1. Create Transaction
       const { data: transData, error: transErr } = await supabase.from('transaction').insert([{
         SUBTOTAL: subtotal,
         TAX_AMOUNT: vat,
         GRAND_TOTAL: grandTotal,
         CASH_TENDERED: grandTotal,
-        PAYMENT_METHOD: 'Cash'
+        PAYMENT_METHOD: paymentMethod
       }]).select().single();
 
       if (transErr) throw transErr;
@@ -86,7 +112,16 @@ export default function POSPage() {
       // Note: Inventory update is now handled automatically by Postgres Triggers!
 
       alert(`Success! Transaction #${transData.TRANS_ID} completed.`);
-      setCart([]);
+      
+      // Keep cart in memory just long enough for Receipt to render, then trigger print
+      setLastTransaction(transData);
+      setTimeout(() => {
+        window.print();
+        setCart([]);
+        setLastTransaction(null);
+        setMpesaPhone('');
+      }, 500);
+
       fetchProducts(); // Refresh inventory
     } catch (err) {
       alert('Error during checkout: ' + err.message);
@@ -182,17 +217,57 @@ export default function POSPage() {
             <span>Ksh. {grandTotal.toLocaleString()}</span>
           </div>
           
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+            <button 
+              className={`btn ${paymentMethod === 'Cash' ? 'btn-primary' : 'btn-secondary'}`} 
+              style={{ flex: 1 }}
+              onClick={() => setPaymentMethod('Cash')}
+            >
+              Cash
+            </button>
+            <button 
+              className={`btn ${paymentMethod === 'M-Pesa' ? 'btn-primary' : 'btn-secondary'}`} 
+              style={{ flex: 1, backgroundColor: paymentMethod === 'M-Pesa' ? '#25D366' : '' }}
+              onClick={() => setPaymentMethod('M-Pesa')}
+            >
+              <Smartphone size={16} style={{ marginRight: '0.5rem' }} />
+              M-Pesa
+            </button>
+          </div>
+
+          {paymentMethod === 'M-Pesa' && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <input 
+                type="tel" 
+                className="input" 
+                placeholder="Customer Phone (e.g. 07...)" 
+                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #25D366' }}
+                value={mpesaPhone}
+                onChange={(e) => setMpesaPhone(e.target.value)}
+              />
+            </div>
+          )}
+
           <button 
             className="btn btn-primary" 
-            style={{ width: '100%', padding: '1rem', fontSize: '1.125rem' }}
+            style={{ width: '100%', padding: '1rem', fontSize: '1.125rem', backgroundColor: paymentMethod === 'M-Pesa' ? '#25D366' : 'var(--primary)' }}
             disabled={cart.length === 0 || checkingOut}
             onClick={checkout}
           >
-            {checkingOut ? <Loader2 size={20} className="animate-spin" /> : <CreditCard size={20} />}
-            {checkingOut ? 'Processing...' : 'Checkout'}
+            {checkingOut ? <Loader2 size={20} className="animate-spin" /> : (paymentMethod === 'M-Pesa' ? <Smartphone size={20} /> : <CreditCard size={20} />)}
+            {checkingOut ? 'Processing...' : `Pay Ksh. ${grandTotal.toLocaleString()}`}
           </button>
         </div>
       </div>
+
+      {/* Hidden Receipt for Printing */}
+      <Receipt 
+        transaction={lastTransaction} 
+        cart={cart} 
+        subtotal={subtotal} 
+        vat={vat} 
+        grandTotal={grandTotal} 
+      />
     </div>
   );
 }

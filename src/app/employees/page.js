@@ -101,10 +101,19 @@ export default function EmployeesPage() {
       LOCATION_ID: locId
     };
 
+    let errorMsg = null;
     if (editingId) {
-      await supabase.from('employee').update(payload).eq('EMPLOYEE_ID', editingId);
+      const { error } = await supabase.from('employee').update(payload).eq('EMPLOYEE_ID', editingId);
+      if (error) errorMsg = error.message;
     } else {
-      await supabase.from('employee').insert([payload]);
+      const { error } = await supabase.from('employee').insert([payload]);
+      if (error) errorMsg = error.message;
+    }
+    
+    setLoading(false);
+    if (errorMsg) {
+      alert(`Database Error: ${errorMsg}`);
+      return;
     }
     
     setShowModal(false);
@@ -113,9 +122,13 @@ export default function EmployeesPage() {
 
   const deleteEmployee = async (id) => {
     if (confirm('Are you sure you want to delete this employee?')) {
-      await supabase.from('employee').delete().eq('EMPLOYEE_ID', id);
-      setLoading(true);
-      fetchEmployees();
+      const { error } = await supabase.from('employee').delete().eq('EMPLOYEE_ID', id);
+      if (error) {
+        alert(`Delete Error: ${error.message}`);
+      } else {
+        setLoading(true);
+        fetchEmployees();
+      }
     }
   };
 

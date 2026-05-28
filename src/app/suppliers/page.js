@@ -71,10 +71,19 @@ export default function SuppliersPage() {
       LOCATION_ID: locId
     };
 
+    let errorMsg = null;
     if (editingId) {
-      await supabase.from('supplier').update(payload).eq('SUPPLIER_ID', editingId);
+      const { error } = await supabase.from('supplier').update(payload).eq('SUPPLIER_ID', editingId);
+      if (error) errorMsg = error.message;
     } else {
-      await supabase.from('supplier').insert([payload]);
+      const { error } = await supabase.from('supplier').insert([payload]);
+      if (error) errorMsg = error.message;
+    }
+    
+    setLoading(false);
+    if (errorMsg) {
+      alert(`Database Error: ${errorMsg}`);
+      return;
     }
     
     setShowModal(false);
@@ -83,9 +92,13 @@ export default function SuppliersPage() {
 
   const deleteSupplier = async (id) => {
     if (confirm('Are you sure you want to delete this supplier?')) {
-      await supabase.from('supplier').delete().eq('SUPPLIER_ID', id);
-      setLoading(true);
-      fetchSuppliers();
+      const { error } = await supabase.from('supplier').delete().eq('SUPPLIER_ID', id);
+      if (error) {
+        alert(`Delete Error: ${error.message}`);
+      } else {
+        setLoading(true);
+        fetchSuppliers();
+      }
     }
   };
 

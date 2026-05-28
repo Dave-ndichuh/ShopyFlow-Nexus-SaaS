@@ -90,10 +90,18 @@ export default function ProductsPage() {
     e.preventDefault();
     const payload = { ...formData, DATE_STOCK_IN: new Date().toISOString() };
     
+    let errorMsg = null;
     if (editingId) {
-      await supabase.from('product').update(payload).eq('PRODUCT_ID', editingId);
+      const { error } = await supabase.from('product').update(payload).eq('PRODUCT_ID', editingId);
+      if (error) errorMsg = error.message;
     } else {
-      await supabase.from('product').insert([payload]);
+      const { error } = await supabase.from('product').insert([payload]);
+      if (error) errorMsg = error.message;
+    }
+    
+    if (errorMsg) {
+      alert(`Database Error: ${errorMsg}`);
+      return;
     }
     
     setShowModal(false);
@@ -200,64 +208,113 @@ export default function ProductsPage() {
 
       {/* Modal Overlay */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '2rem' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '2rem' }}>
           <div className="glass" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
               <h3 className="heading-2" style={{ margin: 0 }}>{editingId ? 'Edit Product' : 'Add Product'}</h3>
               <button onClick={() => setShowModal(false)}><X size={20} className="text-muted" /></button>
             </div>
             
-            <form onSubmit={saveProduct} style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <form onSubmit={saveProduct} style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                 {/* Basic Info */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <h4 style={{ fontWeight: 600, color: 'var(--primary)' }}>Basic Info</h4>
-                  <input type="text" className="input" placeholder="Product Code / SKU" value={formData.PRODUCT_CODE} onChange={e => setFormData({...formData, PRODUCT_CODE: e.target.value})} required />
-                  <input type="text" className="input" placeholder="Name" value={formData.NAME} onChange={e => setFormData({...formData, NAME: e.target.value})} required />
-                  <input type="text" className="input" placeholder="Brand" value={formData.BRAND} onChange={e => setFormData({...formData, BRAND: e.target.value})} />
-                  <input type="text" className="input" placeholder="Barcode" value={formData.BARCODE} onChange={e => setFormData({...formData, BARCODE: e.target.value})} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <h4 style={{ fontWeight: 600, color: 'var(--primary)', marginBottom: '-0.5rem' }}>Basic Info</h4>
                   
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <select className="input" value={formData.CATEGORY_ID} onChange={e => setFormData({...formData, CATEGORY_ID: parseInt(e.target.value) || ''})} required style={{ background: 'var(--card)' }}>
-                      <option value="" disabled>Select Category</option>
-                      {categories.map(c => <option key={c.CATEGORY_ID} value={c.CATEGORY_ID}>{c.CNAME}</option>)}
-                    </select>
-                    
-                    <select className="input" value={formData.SUPPLIER_ID} onChange={e => setFormData({...formData, SUPPLIER_ID: parseInt(e.target.value) || ''})} required style={{ background: 'var(--card)' }}>
-                      <option value="" disabled>Select Supplier</option>
-                      {suppliers.map(s => <option key={s.SUPPLIER_ID} value={s.SUPPLIER_ID}>{s.COMPANY_NAME}</option>)}
-                    </select>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Product Code / SKU</label>
+                    <input type="text" className="input" placeholder="e.g. BRK-001" value={formData.PRODUCT_CODE} onChange={e => setFormData({...formData, PRODUCT_CODE: e.target.value})} required />
                   </div>
                   
-                  <textarea className="input" placeholder="Description" rows={3} value={formData.DESCRIPTION} onChange={e => setFormData({...formData, DESCRIPTION: e.target.value})} style={{ resize: 'vertical' }} />
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Product Name</label>
+                    <input type="text" className="input" placeholder="e.g. Ceramic Brake Pads" value={formData.NAME} onChange={e => setFormData({...formData, NAME: e.target.value})} required />
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Brand</label>
+                    <input type="text" className="input" placeholder="e.g. Bosch" value={formData.BRAND} onChange={e => setFormData({...formData, BRAND: e.target.value})} />
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Barcode (Optional)</label>
+                    <input type="text" className="input" placeholder="Scan or type barcode" value={formData.BARCODE} onChange={e => setFormData({...formData, BARCODE: e.target.value})} />
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Category</label>
+                      <select className="input" value={formData.CATEGORY_ID} onChange={e => setFormData({...formData, CATEGORY_ID: parseInt(e.target.value) || ''})} required style={{ background: 'var(--card)' }}>
+                        <option value="" disabled>Select Category</option>
+                        {categories.map(c => <option key={c.CATEGORY_ID} value={c.CATEGORY_ID}>{c.CNAME}</option>)}
+                      </select>
+                    </div>
+                    
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Supplier</label>
+                      <select className="input" value={formData.SUPPLIER_ID} onChange={e => setFormData({...formData, SUPPLIER_ID: parseInt(e.target.value) || ''})} required style={{ background: 'var(--card)' }}>
+                        <option value="" disabled>Select Supplier</option>
+                        {suppliers.map(s => <option key={s.SUPPLIER_ID} value={s.SUPPLIER_ID}>{s.COMPANY_NAME}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Description</label>
+                    <textarea className="input" placeholder="Product details..." rows={3} value={formData.DESCRIPTION} onChange={e => setFormData({...formData, DESCRIPTION: e.target.value})} style={{ resize: 'vertical' }} />
+                  </div>
                 </div>
 
                 {/* Inventory & Pricing */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <h4 style={{ fontWeight: 600, color: 'var(--primary)' }}>Inventory & Pricing</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <h4 style={{ fontWeight: 600, color: 'var(--primary)', marginBottom: '-0.5rem' }}>Inventory & Pricing</h4>
                   
                   <div style={{ display: 'flex', gap: '1rem' }}>
-                    <input type="number" className="input" placeholder="Current Stock" value={formData.ON_HAND} onChange={e => setFormData({...formData, ON_HAND: parseInt(e.target.value) || 0})} required />
-                    <input type="text" className="input" placeholder="Unit of Measure (e.g. pcs)" value={formData.UOM} onChange={e => setFormData({...formData, UOM: e.target.value})} />
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Current Stock</label>
+                      <input type="number" className="input" placeholder="0" value={formData.ON_HAND} onChange={e => setFormData({...formData, ON_HAND: parseInt(e.target.value) || 0})} required />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Unit of Measure</label>
+                      <input type="text" className="input" placeholder="e.g. pcs, liters" value={formData.UOM} onChange={e => setFormData({...formData, UOM: e.target.value})} />
+                    </div>
                   </div>
                   
                   <div style={{ display: 'flex', gap: '1rem' }}>
-                    <input type="number" className="input" placeholder="Reorder Threshold" value={formData.REORDER_THRESHOLD} onChange={e => setFormData({...formData, REORDER_THRESHOLD: parseInt(e.target.value) || 0})} />
-                    <input type="text" className="input" placeholder="Weight / Dimensions" value={formData.WEIGHT} onChange={e => setFormData({...formData, WEIGHT: e.target.value})} />
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Reorder Threshold</label>
+                      <input type="number" className="input" placeholder="e.g. 5" value={formData.REORDER_THRESHOLD} onChange={e => setFormData({...formData, REORDER_THRESHOLD: parseInt(e.target.value) || 0})} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Weight/Dims (Optional)</label>
+                      <input type="text" className="input" placeholder="e.g. 2kg" value={formData.WEIGHT} onChange={e => setFormData({...formData, WEIGHT: e.target.value})} />
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '1rem' }}>
-                    <input type="number" className="input" placeholder="Cost Price (Ksh)" value={formData.COST_PRICE} onChange={e => setFormData({...formData, COST_PRICE: parseInt(e.target.value) || 0})} />
-                    <input type="number" className="input" placeholder="Selling Price (Ksh)" value={formData.PRICE} onChange={e => setFormData({...formData, PRICE: parseInt(e.target.value) || 0})} required />
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Cost Price (Ksh)</label>
+                      <input type="number" className="input" placeholder="0" value={formData.COST_PRICE} onChange={e => setFormData({...formData, COST_PRICE: parseInt(e.target.value) || 0})} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Selling Price (Ksh)</label>
+                      <input type="number" className="input" placeholder="0" value={formData.PRICE} onChange={e => setFormData({...formData, PRICE: parseInt(e.target.value) || 0})} required />
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '1rem' }}>
-                    <input type="number" className="input" placeholder="Tax Rate %" value={formData.TAX_RATE} onChange={e => setFormData({...formData, TAX_RATE: parseFloat(e.target.value) || 0})} />
-                    <select className="input" value={formData.STATUS} onChange={e => setFormData({...formData, STATUS: e.target.value})} style={{ background: 'var(--card)' }}>
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Tax Rate (%)</label>
+                      <input type="number" className="input" placeholder="16.0" value={formData.TAX_RATE} onChange={e => setFormData({...formData, TAX_RATE: parseFloat(e.target.value) || 0})} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Status</label>
+                      <select className="input" value={formData.STATUS} onChange={e => setFormData({...formData, STATUS: e.target.value})} style={{ background: 'var(--card)' }}>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div style={{ marginTop: '1rem', padding: '1rem', border: '1px dashed var(--border)', borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>

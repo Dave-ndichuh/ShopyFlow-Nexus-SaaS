@@ -11,7 +11,8 @@ import {
   FileText, 
   Settings,
   LogOut,
-  BarChart3
+  BarChart3,
+  Wrench
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -35,6 +36,7 @@ export default function Sidebar() {
     { name: 'Customers', path: '/customers', icon: Users },
     { name: 'Suppliers', path: '/suppliers', icon: Truck },
     { name: 'Transactions', path: '/transactions', icon: FileText },
+    { name: 'Services', path: '/services', icon: Wrench },
     { name: 'Reports', path: '/reports', icon: BarChart3 },
     { name: 'Employees', path: '/employees', icon: Users },
   ];

@@ -2,38 +2,62 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { BarChart3, TrendingUp, AlertCircle, PackageSearch, Download, DollarSign, Calendar } from 'lucide-react';
+import { BarChart3, TrendingUp, AlertCircle, PackageSearch, Download, DollarSign, Calendar, RefreshCcw } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
 export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   
   // Custom Date Range
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(1); // First day of current month
-    return d.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [periodPreset, setPeriodPreset] = useState('This Month'); // Today, Last 7 Days, This Month, Last Month, Custom
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const [metrics, setMetrics] = useState({
     totalSales: 0,
     grossProfit: 0,
     profitMargin: 0,
     transactionCount: 0,
+    atv: 0,
+    stockValue: 0
   });
   
-  const [lowStock, setLowStock] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
+  const [deadStock, setDeadStock] = useState([]);
+  const [categoryData, setCategoryData] = useState([]);
   const [rawTransactions, setRawTransactions] = useState([]);
 
+  // Handle Preset changes
+  useEffect(() => {
+    const today = new Date();
+    let start = new Date();
+    let end = new Date();
+    
+    if (periodPreset === 'Today') {
+      // already today
+    } else if (periodPreset === 'Last 7 Days') {
+      start.setDate(today.getDate() - 6);
+    } else if (periodPreset === 'This Month') {
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+    } else if (periodPreset === 'Last Month') {
+      start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      end = new Date(today.getFullYear(), today.getMonth(), 0);
+    } else if (periodPreset === 'Custom') {
+      return; // Do nothing, let user select
+    }
+
+    setStartDate(start.toISOString().split('T')[0]);
+    setEndDate(end.toISOString().split('T')[0]);
+  }, [periodPreset]);
+
   const fetchAnalytics = async () => {
+    if (!startDate || !endDate) return;
     setLoading(true);
     
-    // 1. Fetch Transactions for Custom Period
-    // Adjust endDate to include the entire day
     const endDateTime = `${endDate}T23:59:59.999Z`;
     const startDateTime = `${startDate}T00:00:00.000Z`;
 
+    // 1. Fetch Transactions
     const { data: transData } = await supabase
       .from('transaction')
       .select(`
@@ -42,17 +66,34 @@ export default function ReportsPage() {
           PRODUCT_ID,
           QTY,
           UNIT_PRICE,
-          product (NAME, COST_PRICE)
+          product (NAME, COST_PRICE, CATEGORY_ID, ON_HAND, category(CNAME))
         )
       `)
       .gte('CREATED_AT', startDateTime)
-      .lte('CREATED_AT', endDateTime)
-      .order('CREATED_AT', { ascending: false });
+      .lte('CREATED_AT', endDateTime);
+
+    // 2. Fetch All Products (for dead stock and total stock value)
+    const { data: prodData } = await supabase
+      .from('product')
+      .select(`*, category(CNAME)`);
 
     let tSales = 0;
     let tCost = 0;
     let tCount = 0;
-    const productSales = {};
+    
+    const productStats = {}; // { ID: { name, category, qty, revenue, profit } }
+    const catStats = {}; // { categoryName: revenue }
+    
+    // Process All Products mapping
+    const allProductsMap = {};
+    let totalStockVal = 0;
+
+    if (prodData) {
+      prodData.forEach(p => {
+        allProductsMap[p.PRODUCT_ID] = p;
+        totalStockVal += (Number(p.ON_HAND) || 0) * (Number(p.COST_PRICE) || 0);
+      });
+    }
 
     if (transData) {
       setRawTransactions(transData);
@@ -61,18 +102,32 @@ export default function ReportsPage() {
         const saleTotal = Number(t.ADJUSTED_TOTAL) || Number(t.GRAND_TOTAL) || 0;
         tSales += saleTotal;
 
-        // Calculate Cost from details
         if (t.transaction_details) {
           t.transaction_details.forEach(d => {
             const cost = Number(d.product?.COST_PRICE) || 0;
+            const price = Number(d.UNIT_PRICE) || 0;
             const qty = Number(d.QTY) || 0;
+            const rev = price * qty;
+            const prof = (price - cost) * qty;
+            
             tCost += (cost * qty);
 
-            // Aggregate Top Products
-            if (!productSales[d.PRODUCT_ID]) {
-              productSales[d.PRODUCT_ID] = { name: d.product?.NAME || 'Unknown Part', qty: 0 };
+            const pId = d.PRODUCT_ID;
+            const cName = d.product?.category?.CNAME || 'Uncategorized';
+
+            if (!productStats[pId]) {
+              productStats[pId] = { 
+                name: d.product?.NAME || 'Unknown Part', 
+                category: cName,
+                qty: 0, revenue: 0, profit: 0 
+              };
             }
-            productSales[d.PRODUCT_ID].qty += qty;
+            productStats[pId].qty += qty;
+            productStats[pId].revenue += rev;
+            productStats[pId].profit += prof;
+
+            if (!catStats[cName]) catStats[cName] = 0;
+            catStats[cName] += rev;
           });
         }
       });
@@ -80,27 +135,42 @@ export default function ReportsPage() {
 
     const grossProfit = tSales - tCost;
     const profitMargin = tSales > 0 ? (grossProfit / tSales) * 100 : 0;
+    const atv = tCount > 0 ? tSales / tCount : 0;
 
-    const sortedProducts = Object.values(productSales)
-      .sort((a, b) => b.qty - a.qty)
-      .slice(0, 5);
+    // Top 10 Products by Revenue
+    const sortedProducts = Object.values(productStats)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
 
-    // 2. Fetch Low Stock Products
-    const { data: prodData } = await supabase
-      .from('product')
-      .select('*')
-      .lte('ON_HAND', 5)
-      .order('ON_HAND', { ascending: true })
-      .limit(5); // Only show top 5 lowest
+    // Dead Stock (0 sales, ON_HAND > 10)
+    const dead = [];
+    if (prodData) {
+      prodData.forEach(p => {
+        if (p.ON_HAND > 10 && !productStats[p.PRODUCT_ID]) {
+          dead.push(p);
+        }
+      });
+    }
+    // Sort dead stock by Highest Value (ON_HAND * COST_PRICE)
+    dead.sort((a, b) => (b.ON_HAND * b.COST_PRICE) - (a.ON_HAND * a.COST_PRICE));
+
+    // Category Chart Data
+    const cData = Object.keys(catStats).map(k => ({
+      name: k,
+      Revenue: catStats[k]
+    })).sort((a, b) => b.Revenue - a.Revenue).slice(0, 10); // Top 10 categories
 
     setMetrics({ 
       totalSales: tSales, 
       grossProfit, 
       profitMargin, 
-      transactionCount: tCount 
+      transactionCount: tCount,
+      atv,
+      stockValue: totalStockVal
     });
     setTopProducts(sortedProducts);
-    if (prodData) setLowStock(prodData);
+    setDeadStock(dead.slice(0, 10)); // Limit to top 10 worst offenders
+    setCategoryData(cData);
     
     setLoading(false);
   };
@@ -119,17 +189,16 @@ export default function ReportsPage() {
     csvContent += `Profit Margin (%),${metrics.profitMargin.toFixed(2)}%\n`;
     csvContent += `Total Transactions,${metrics.transactionCount}\n\n`;
     
-    csvContent += "Transaction ID,Date,Method,Items,Total\n";
-    rawTransactions.forEach(t => {
-      const itemsCount = t.transaction_details?.reduce((acc, d) => acc + d.QTY, 0) || 0;
-      const total = t.ADJUSTED_TOTAL || t.GRAND_TOTAL;
-      csvContent += `TRX-${t.TRANS_ID},${t.CREATED_AT.split('T')[0]},${t.PAYMENT_METHOD},${itemsCount},${total}\n`;
+    csvContent += "Top 10 Products\n";
+    csvContent += "Name,Category,Units Sold,Revenue,Profit\n";
+    topProducts.forEach(p => {
+      csvContent += `${p.name},${p.category},${p.qty},${p.revenue},${p.profit}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Sales_Report_${startDate}_${endDate}.csv`);
+    link.setAttribute("download", `Advanced_Report_${startDate}_${endDate}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -144,14 +213,32 @@ export default function ReportsPage() {
         {/* Custom Period Filters */}
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'var(--card)', padding: '0.5rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
           <Calendar size={18} className="text-muted" />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>From:</span>
-            <input type="date" className="input" style={{ padding: '0.25rem 0.5rem', height: 'auto', background: 'rgba(0,0,0,0.2)' }} value={startDate} onChange={e => setStartDate(e.target.value)} />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>To:</span>
-            <input type="date" className="input" style={{ padding: '0.25rem 0.5rem', height: 'auto', background: 'rgba(0,0,0,0.2)' }} value={endDate} onChange={e => setEndDate(e.target.value)} />
-          </div>
+          
+          <select className="input" style={{ width: '150px', background: 'rgba(0,0,0,0.2)' }} value={periodPreset} onChange={e => setPeriodPreset(e.target.value)}>
+            <option>Today</option>
+            <option>Last 7 Days</option>
+            <option>This Month</option>
+            <option>Last Month</option>
+            <option>Custom</option>
+          </select>
+
+          {periodPreset === 'Custom' && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>From:</span>
+                <input type="date" className="input" style={{ padding: '0.25rem 0.5rem', height: 'auto', background: 'rgba(0,0,0,0.2)' }} value={startDate} onChange={e => setStartDate(e.target.value)} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>To:</span>
+                <input type="date" className="input" style={{ padding: '0.25rem 0.5rem', height: 'auto', background: 'rgba(0,0,0,0.2)' }} value={endDate} onChange={e => setEndDate(e.target.value)} />
+              </div>
+            </>
+          )}
+
+          <button className="btn btn-secondary" onClick={fetchAnalytics} title="Refresh">
+            <RefreshCcw size={16} />
+          </button>
+          
           <button className="btn btn-primary" style={{ padding: '0.5rem 1rem' }} onClick={exportCSV}>
             <Download size={16} /> Export
           </button>
@@ -163,98 +250,126 @@ export default function ReportsPage() {
       ) : (
         <>
           {/* Metrics Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
-            <div className="glass" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)' }}>
-                <TrendingUp size={18} />
-                <span style={{ fontWeight: 500 }}>Total Sales</span>
-              </div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--foreground)' }}>
-                Ksh {metrics.totalSales.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
+            <div className="glass" style={{ padding: '1.25rem', borderLeft: '3px solid var(--primary)' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Total Sales</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>Ksh {(metrics.totalSales/1000).toFixed(1)}k</div>
             </div>
-
-            <div className="glass" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', borderLeft: '4px solid #10b981' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)' }}>
-                <DollarSign size={18} />
-                <span style={{ fontWeight: 500 }}>Gross Profit</span>
-              </div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#10b981' }}>
-                Ksh {metrics.grossProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </div>
+            <div className="glass" style={{ padding: '1.25rem', borderLeft: '3px solid #10b981' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Gross Profit</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#10b981' }}>Ksh {(metrics.grossProfit/1000).toFixed(1)}k</div>
             </div>
-
-            <div className="glass" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', borderLeft: '4px solid var(--primary)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)' }}>
-                <BarChart3 size={18} />
-                <span style={{ fontWeight: 500 }}>Profit Margin</span>
-              </div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--primary)' }}>
-                {metrics.profitMargin.toFixed(1)}%
-              </div>
+            <div className="glass" style={{ padding: '1.25rem', borderLeft: '3px solid #8b5cf6' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Profit Margin</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#8b5cf6' }}>{metrics.profitMargin.toFixed(1)}%</div>
             </div>
+            <div className="glass" style={{ padding: '1.25rem' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Transactions</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{metrics.transactionCount}</div>
+            </div>
+            <div className="glass" style={{ padding: '1.25rem' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Avg. Transaction</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>Ksh {metrics.atv.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+            </div>
+            <div className="glass" style={{ padding: '1.25rem', borderLeft: '3px solid #f59e0b' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Stock Value Risk</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f59e0b' }}>Ksh {(metrics.stockValue/1000).toFixed(1)}k</div>
+            </div>
+          </div>
 
-            <div className="glass" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)' }}>
-                <PackageSearch size={18} />
-                <span style={{ fontWeight: 500 }}>Transactions</span>
-              </div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--foreground)' }}>
-                {metrics.transactionCount}
-              </div>
+          {/* Visual Analytics */}
+          <div className="glass" style={{ padding: '1.5rem' }}>
+            <h3 className="heading-2" style={{ fontSize: '1.125rem', marginBottom: '1.5rem' }}>Revenue by Category (Top 10)</h3>
+            <div style={{ height: '300px' }}>
+              {categoryData.length === 0 ? (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted-foreground)' }}>No Data</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={categoryData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tick={{ fill: 'var(--muted-foreground)' }} />
+                    <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(value) => \`\${value / 1000}k\`} />
+                    <RechartsTooltip 
+                      contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                      formatter={(value) => [\`Ksh \${value.toLocaleString()}\`, 'Revenue']}
+                    />
+                    <Bar dataKey="Revenue" fill="var(--primary)" radius={[4, 4, 0, 0]}>
+                      {categoryData.map((entry, index) => (
+                        <Cell key={\`cell-\${index}\`} fill={index % 2 === 0 ? 'var(--primary)' : '#8b5cf6'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: '2rem' }}>
-            {/* Top Selling Products */}
-            <div className="glass" style={{ flex: 2, padding: '1.5rem' }}>
-              <h3 className="heading-2" style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Most Selling Products</h3>
+            {/* Top 10 Performing Products */}
+            <div className="glass" style={{ flex: 1, padding: '1.5rem', overflowX: 'auto' }}>
+              <h3 className="heading-2" style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Top 10 Products (Revenue)</h3>
               <table className="table">
                 <thead>
                   <tr>
                     <th>Product Name</th>
-                    <th style={{ textAlign: 'right' }}>Units Sold (Period)</th>
+                    <th>Category</th>
+                    <th style={{ textAlign: 'right' }}>Units</th>
+                    <th style={{ textAlign: 'right' }}>Revenue</th>
+                    <th style={{ textAlign: 'right' }}>Profit</th>
                   </tr>
                 </thead>
                 <tbody>
                   {topProducts.length === 0 ? (
-                    <tr><td colSpan="2" style={{ textAlign: 'center' }}>No sales data for this period.</td></tr>
+                    <tr><td colSpan="5" style={{ textAlign: 'center' }}>No sales data for this period.</td></tr>
                   ) : topProducts.map((p, idx) => (
                     <tr key={idx}>
                       <td style={{ fontWeight: 500 }}>{p.name}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <span className="badge badge-primary">{p.qty} units</span>
-                      </td>
+                      <td className="text-muted" style={{ fontSize: '0.875rem' }}>{p.category}</td>
+                      <td style={{ textAlign: 'right' }}><span className="badge badge-primary">{p.qty}</span></td>
+                      <td style={{ textAlign: 'right', fontWeight: 600 }}>Ksh {p.revenue.toLocaleString()}</td>
+                      <td style={{ textAlign: 'right', color: '#10b981', fontWeight: 600 }}>Ksh {p.profit.toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Low Stock Alerts */}
-            <div className="glass" style={{ flex: 1, padding: '1.5rem' }}>
+            {/* Worst Performing Products (Dead Stock) */}
+            <div className="glass" style={{ flex: 1, padding: '1.5rem', overflowX: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
                 <AlertCircle size={20} color="#ef4444" />
-                <h3 className="heading-2" style={{ fontSize: '1.25rem', margin: 0, color: '#ef4444' }}>Critical Stock Alerts</h3>
+                <h3 className="heading-2" style={{ fontSize: '1.25rem', margin: 0, color: '#ef4444' }}>Dead Stock (0 Sales, >10 Stock)</h3>
               </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {lowStock.length === 0 ? (
-                  <p className="text-muted">All inventory levels are healthy.</p>
-                ) : lowStock.map(item => (
-                  <div key={item.PRODUCT_ID} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: 'var(--radius)', borderLeft: '4px solid #ef4444' }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{item.NAME}</div>
-                      <div style={{ fontSize: '0.875rem' }} className="text-muted">{item.PRODUCT_CODE}</div>
-                    </div>
-                    <div style={{ fontWeight: 700, color: '#ef4444' }}>
-                      {item.ON_HAND} left
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th style={{ textAlign: 'right' }}>In Stock</th>
+                    <th style={{ textAlign: 'right' }}>Capital Tied</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deadStock.length === 0 ? (
+                    <tr><td colSpan="4" style={{ textAlign: 'center' }}>No dead stock detected!</td></tr>
+                  ) : deadStock.map((p, idx) => {
+                    const capital = p.ON_HAND * p.COST_PRICE;
+                    return (
+                      <tr key={idx}>
+                        <td style={{ fontWeight: 500 }}>{p.NAME}</td>
+                        <td className="text-muted" style={{ fontSize: '0.875rem' }}>{p.category?.CNAME || 'N/A'}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <span className="badge badge-destructive">{p.ON_HAND}</span>
+                        </td>
+                        <td style={{ textAlign: 'right', color: '#f59e0b', fontWeight: 600 }}>Ksh {capital.toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
+
         </>
       )}
 

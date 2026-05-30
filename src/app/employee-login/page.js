@@ -161,8 +161,8 @@ export default function EmployeeLoginPage() {
       {/* Left Brand Panel */}
       <div className="brand-panel">
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.2)', backdropFilter: 'blur(10px)', border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: '2rem' }}>
-            <KeyRound size={32} color="#34d399" />
+          <div style={{ marginBottom: '2rem' }}>
+            <img src="/logo.png" alt="Jobea Auto Logo" style={{ height: '80px', objectFit: 'contain' }} />
           </div>
           <h1 style={{ fontSize: '3.5rem', fontWeight: 800, lineHeight: 1.1, marginBottom: '1rem', letterSpacing: '-0.02em' }}>
             Staff Access<br/>Terminal

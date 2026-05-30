@@ -65,8 +65,8 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar glass-panel">
-      <div className="sidebar-header">
-        <h2 className="heading-2" style={{ marginBottom: 0, fontSize: '1.25rem', color: 'var(--primary)' }}>Jobea Auto</h2>
+      <div className="sidebar-header" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+        <img src="/logo.png" alt="Jobea Auto Logo" style={{ height: '48px', objectFit: 'contain' }} />
       </div>
       
       <nav className="sidebar-nav">

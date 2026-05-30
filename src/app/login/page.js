@@ -54,17 +54,7 @@ export default function LoginPage() {
         <div style={{ position: 'absolute', bottom: '-50px', right: '-50px', width: '150px', height: '150px', background: '#f97316', filter: 'blur(60px)', opacity: 0.2, borderRadius: '50%' }} />
 
         <div style={{ textAlign: 'center', marginBottom: '2.5rem', position: 'relative' }}>
-          <div style={{ 
-            background: 'linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            display: 'inline-block',
-            marginBottom: '0.5rem'
-          }}>
-            <h1 style={{ fontSize: '3rem', fontWeight: 800, letterSpacing: '-0.05em', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-              Jobea <Sparkles size={28} color="#8b5cf6" style={{ WebkitTextFillColor: 'initial' }} />
-            </h1>
-          </div>
+          <img src="/logo.png" alt="Jobea Auto Logo" style={{ height: '80px', objectFit: 'contain', marginBottom: '1rem' }} />
           <p className="text-muted" style={{ fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.75rem' }}>Admin Portal</p>
         </div>
 

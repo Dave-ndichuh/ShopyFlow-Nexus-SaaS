@@ -156,10 +156,62 @@ export default function EmployeeLoginPage() {
           .brand-panel { padding: 3rem 2rem; flex: none; text-align: center; }
           .form-panel { max-width: 100%; padding: 2rem; }
         }
+
+        /* Speedometer/Dashboard Animations */
+        .hud-container {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 800px;
+          height: 800px;
+          pointer-events: none;
+          z-index: 0;
+          opacity: 0.8;
+        }
+        .hud-circle-1 {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          border: 2px dashed rgba(16, 185, 129, 0.15);
+          animation: spin 60s linear infinite;
+        }
+        .hud-circle-2 {
+          position: absolute;
+          inset: 10%;
+          border-radius: 50%;
+          border: 4px dotted rgba(16, 185, 129, 0.2);
+          animation: spin-reverse 40s linear infinite;
+        }
+        .hud-circle-3 {
+          position: absolute;
+          inset: 25%;
+          border-radius: 50%;
+          border: 1px solid rgba(16, 185, 129, 0.1);
+          box-shadow: inset 0 0 50px rgba(16, 185, 129, 0.05);
+          animation: spin 80s linear infinite;
+        }
+        .hud-circle-3::after {
+          content: '';
+          position: absolute;
+          top: -1px; left: 50%;
+          width: 4px; height: 15px;
+          background: #10b981;
+          border-radius: 4px;
+          box-shadow: 0 0 10px #10b981;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
       `}</style>
 
       {/* Left Brand Panel */}
       <div className="brand-panel">
+        <div className="hud-container">
+          <div className="hud-circle-1" />
+          <div className="hud-circle-2" />
+          <div className="hud-circle-3" />
+        </div>
+        
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ marginBottom: '2rem' }}>
             <img src="/logo.png" alt="Jobea Auto Logo" style={{ height: '80px', objectFit: 'contain' }} />

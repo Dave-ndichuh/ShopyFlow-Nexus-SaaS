@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Lock, Mail, Loader2, Sparkles, UserCheck, ArrowRight } from 'lucide-react';
+import { Lock, Mail, Loader2, Sparkles, UserCheck, ArrowRight, Settings, Wrench, Battery, Gauge, Zap, Car, Bike, Truck } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -37,11 +38,36 @@ export default function LoginPage() {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '2rem',
+      backgroundColor: '#0f172a',
+      position: 'relative',
+      overflow: 'hidden'
     }}>
       <style jsx>{`
         .login-box { padding: 3rem 2.5rem; }
         @media (max-width: 640px) { .login-box { padding: 2rem 1.5rem; } }
+        
+        .floating-icon {
+          position: absolute;
+          color: rgba(255, 255, 255, 0.03);
+          z-index: 0;
+          animation: float linear infinite;
+        }
+        
+        @keyframes aurora {
+          0% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(5vw, -5vh) scale(1.1); }
+          66% { transform: translate(-5vw, 5vh) scale(0.9); }
+          100% { transform: translate(0, 0) scale(1); }
+        }
       `}</style>
+      
+      {/* Professional Ambient Gradient Background */}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0, pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '60vw', height: '60vw', background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)', filter: 'blur(60px)', animation: 'aurora 20s ease-in-out infinite alternate' }} />
+        <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '70vw', height: '70vw', background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)', filter: 'blur(80px)', animation: 'aurora 25s ease-in-out infinite alternate-reverse' }} />
+        <div style={{ position: 'absolute', top: '40%', left: '50%', width: '50vw', height: '50vw', background: 'radial-gradient(circle, rgba(16,185,129,0.03) 0%, transparent 70%)', filter: 'blur(100px)', transform: 'translate(-50%, -50%)', animation: 'aurora 30s ease-in-out infinite alternate' }} />
+      </div>
+
       <div className="glass animate-fade-in login-box" style={{
         width: '100%',
         maxWidth: '420px',
@@ -112,11 +138,16 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)', position: 'relative', textAlign: 'center' }}>
+        <div style={{ zIndex: 10, position: 'relative', marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
           <p className="text-muted" style={{ fontSize: '0.875rem', marginBottom: '1rem' }}>Are you a staff member?</p>
-          <a href="/employee-login" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', height: '48px', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+          <button 
+            type="button" 
+            className="btn btn-secondary" 
+            style={{ width: '100%', height: '48px', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}
+            onClick={() => router.push('/employee-login')}
+          >
             <UserCheck size={18} /> Employee Portal Access <ArrowRight size={16} />
-          </a>
+          </button>
         </div>
 
       </div>

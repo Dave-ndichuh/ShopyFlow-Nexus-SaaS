@@ -14,7 +14,7 @@ export default function EmployeesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    FIRST_NAME: '', LAST_NAME: '', GENDER: 'Male', EMAIL: '', PHONE_NUMBER: '', JOB_TITLE: '', LOCATION_CITY: ''
+    FIRST_NAME: '', LAST_NAME: '', GENDER: 'Male', EMAIL: '', PHONE_NUMBER: '', JOB_TITLE: '', LOCATION_CITY: '', PIN: ''
   });
 
   const fetchEmployees = async () => {
@@ -54,11 +54,12 @@ export default function EmployeesPage() {
         EMAIL: employee.EMAIL || '',
         PHONE_NUMBER: employee.PHONE_NUMBER || '',
         JOB_TITLE: employee.job?.JOB_TITLE || '',
-        LOCATION_CITY: employee.location?.CITY || ''
+        LOCATION_CITY: employee.location?.CITY || '',
+        PIN: employee.PIN || ''
       });
     } else {
       setEditingId(null);
-      setFormData({ FIRST_NAME: '', LAST_NAME: '', GENDER: 'Male', EMAIL: '', PHONE_NUMBER: '', JOB_TITLE: '', LOCATION_CITY: '' });
+      setFormData({ FIRST_NAME: '', LAST_NAME: '', GENDER: 'Male', EMAIL: '', PHONE_NUMBER: '', JOB_TITLE: '', LOCATION_CITY: '', PIN: '' });
     }
     setShowModal(true);
   };
@@ -103,16 +104,33 @@ export default function EmployeesPage() {
 
     let errorMsg = null;
     if (editingId) {
+      // For edits, we just update the DB (PIN update not supported here yet to keep it simple, but we can update PIN in DB)
+      payload.PIN = formData.PIN;
       const { error } = await supabase.from('employee').update(payload).eq('EMPLOYEE_ID', editingId);
       if (error) errorMsg = error.message;
     } else {
-      const { error } = await supabase.from('employee').insert([payload]);
-      if (error) errorMsg = error.message;
+      // For creation, use the secure backend API to create Supabase Auth User + DB record
+      const res = await fetch('/api/employees/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: formData.FIRST_NAME,
+          lastName: formData.LAST_NAME,
+          gender: formData.GENDER,
+          email: formData.EMAIL,
+          phone: formData.PHONE_NUMBER,
+          jobId: jobId,
+          locationId: locId,
+          pin: formData.PIN
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) errorMsg = data.error;
     }
     
     setLoading(false);
     if (errorMsg) {
-      alert(`Database Error: ${errorMsg}`);
+      alert(`Error: ${errorMsg}`);
       return;
     }
     
@@ -162,7 +180,7 @@ export default function EmployeesPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Name</th>
+              <th>Name / Username</th>
               <th>Gender</th>
               <th>Email</th>
               <th>Phone</th>
@@ -183,7 +201,10 @@ export default function EmployeesPage() {
             ) : (
               filteredEmployees.map((emp) => (
                 <tr key={emp.EMPLOYEE_ID}>
-                  <td style={{ fontWeight: 500 }}>{emp.FIRST_NAME} {emp.LAST_NAME}</td>
+                  <td>
+                    <div style={{ fontWeight: 500 }}>{emp.FIRST_NAME} {emp.LAST_NAME}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>@{emp.USERNAME || 'pending'}</div>
+                  </td>
                   <td className="text-muted">{emp.GENDER}</td>
                   <td>{emp.EMAIL}</td>
                   <td className="text-muted">{emp.PHONE_NUMBER}</td>
@@ -223,7 +244,7 @@ export default function EmployeesPage() {
                 </div>
                 
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                  <input type="email" className="input" placeholder="Email Address" value={formData.EMAIL} onChange={e => setFormData({...formData, EMAIL: e.target.value})} required />
+                  <input type="email" className="input" placeholder="Email Address" value={formData.EMAIL} onChange={e => setFormData({...formData, EMAIL: e.target.value})} required disabled={!!editingId} title={editingId ? "Cannot change email after creation" : ""} />
                   <input type="tel" className="input" placeholder="Phone Number" value={formData.PHONE_NUMBER} onChange={e => setFormData({...formData, PHONE_NUMBER: e.target.value})} required />
                 </div>
 
@@ -237,7 +258,10 @@ export default function EmployeesPage() {
                   <input type="text" className="input" placeholder="Job Role (e.g. Manager)" value={formData.JOB_TITLE} onChange={e => setFormData({...formData, JOB_TITLE: e.target.value})} required />
                 </div>
 
-                <input type="text" className="input" placeholder="Location City (e.g. Nairobi)" value={formData.LOCATION_CITY} onChange={e => setFormData({...formData, LOCATION_CITY: e.target.value})} required />
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <input type="text" className="input" placeholder="Location City (e.g. Nairobi)" value={formData.LOCATION_CITY} onChange={e => setFormData({...formData, LOCATION_CITY: e.target.value})} required />
+                  <input type="text" className="input" placeholder="Set 4-to-6 Digit PIN" value={formData.PIN} onChange={e => setFormData({...formData, PIN: e.target.value})} required minLength="4" maxLength="6" pattern="\d+" title="Numeric PIN only" />
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>

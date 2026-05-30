@@ -28,11 +28,15 @@ export default function AuthGuard({ children }) {
       // 2. Determine Role
       // Admin bypasses checks. For this implementation, we check if the email exists in `employee` table.
       // If it exists, they are restricted to employee routes.
-      const { data: empData } = await supabase
+      const { data: empData, error: empError } = await supabase
         .from('employee')
         .select('EMAIL')
-        .eq('EMAIL', user.email)
-        .single();
+        .ilike('EMAIL', user.email)
+        .maybeSingle();
+
+      if (empError) {
+        console.error('Error fetching employee status:', empError);
+      }
 
       const isEmployee = !!empData;
       

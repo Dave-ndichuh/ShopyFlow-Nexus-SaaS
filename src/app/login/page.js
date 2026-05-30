@@ -3,15 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Lock, Mail, Loader2, Sparkles, UserCheck } from 'lucide-react';
+import { Lock, Mail, Loader2, Sparkles, UserCheck, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginPage() {
-  const [role, setRole] = useState('admin'); // 'admin' or 'employee'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const router = useRouter();
 
   const handleAdminLogin = async (e) => {
@@ -19,33 +18,12 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) throw error;
       router.push('/');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEmployeeLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: window.location.origin + '/dashboard',
-        }
-      });
-      if (error) throw error;
-      setSuccess('Magic Link sent! Please check your email to log in securely.');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -88,23 +66,7 @@ export default function LoginPage() {
               Jobea <Sparkles size={28} color="#8b5cf6" style={{ WebkitTextFillColor: 'initial' }} />
             </h1>
           </div>
-          <p className="text-muted" style={{ fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.75rem' }}>Auto Spare Parts Management</p>
-        </div>
-
-        {/* Role Switcher */}
-        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', borderRadius: 'var(--radius)', padding: '0.25rem', marginBottom: '2rem', position: 'relative' }}>
-          <button 
-            style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 600, color: role === 'admin' ? 'var(--foreground)' : 'var(--muted-foreground)', background: role === 'admin' ? 'var(--card)' : 'transparent', transition: 'all 0.2s', boxShadow: role === 'admin' ? '0 2px 4px rgba(0,0,0,0.2)' : 'none' }}
-            onClick={() => { setRole('admin'); setError(null); setSuccess(null); }}
-          >
-            Admin Portal
-          </button>
-          <button 
-            style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 600, color: role === 'employee' ? 'var(--foreground)' : 'var(--muted-foreground)', background: role === 'employee' ? 'var(--card)' : 'transparent', transition: 'all 0.2s', boxShadow: role === 'employee' ? '0 2px 4px rgba(0,0,0,0.2)' : 'none' }}
-            onClick={() => { setRole('employee'); setError(null); setSuccess(null); }}
-          >
-            Employee Access
-          </button>
+          <p className="text-muted" style={{ fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.75rem' }}>Admin Portal</p>
         </div>
 
         {error && (
@@ -113,16 +75,10 @@ export default function LoginPage() {
           </div>
         )}
 
-        {success && (
-          <div style={{ padding: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '8px', color: '#10b981', fontSize: '0.875rem', textAlign: 'center', marginBottom: '1.5rem', position: 'relative' }}>
-            {success}
-          </div>
-        )}
-
-        <form onSubmit={role === 'admin' ? handleAdminLogin : handleEmployeeLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
+        <form onSubmit={handleAdminLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
           
           <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--foreground)' }}>Email Address</label>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--foreground)' }}>Admin Email</label>
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }}>
                 <Mail size={18} />
@@ -131,7 +87,7 @@ export default function LoginPage() {
                 type="email"
                 className="input"
                 style={{ paddingLeft: '2.5rem', height: '48px' }}
-                placeholder={role === 'admin' ? "admin@jobea.co.ke" : "employee@jobea.co.ke"}
+                placeholder="admin@jobea.co.ke"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -139,35 +95,43 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {role === 'admin' && (
-            <div className="animate-fade-in">
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--foreground)' }}>Secure Password</label>
-              <div style={{ position: 'relative' }}>
-                <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }}>
-                  <Lock size={18} />
-                </div>
-                <input
-                  type="password"
-                  className="input"
-                  style={{ paddingLeft: '2.5rem', height: '48px' }}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+          <div>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--foreground)' }}>Secure Password</label>
+            <div style={{ position: 'relative' }}>
+              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }}>
+                <Lock size={18} />
               </div>
+              <input
+                type="password"
+                className="input"
+                style={{ paddingLeft: '2.5rem', height: '48px' }}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
             </div>
-          )}
+          </div>
 
           <button 
             type="submit" 
             className="btn btn-primary" 
-            style={{ width: '100%', marginTop: '1rem', height: '48px', fontSize: '1rem' }}
+            style={{ width: '100%', marginTop: '0.5rem', height: '48px', fontSize: '1rem' }}
             disabled={loading}
           >
-            {loading ? <Loader2 size={20} className="animate-spin" /> : (role === 'admin' ? 'Authenticate' : <><UserCheck size={18} /> Send Magic Link</>)}
+            {loading ? <Loader2 size={20} className="animate-spin" /> : 'Authenticate'}
           </button>
         </form>
+
+        <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)', position: 'relative', textAlign: 'center' }}>
+          <p className="text-muted" style={{ fontSize: '0.875rem', marginBottom: '1rem' }}>Are you a staff member?</p>
+          <Link href="/employee-login" style={{ textDecoration: 'none' }}>
+            <button className="btn btn-secondary" style={{ width: '100%', height: '48px', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+              <UserCheck size={18} /> Employee Portal Access <ArrowRight size={16} />
+            </button>
+          </Link>
+        </div>
+
       </div>
     </div>
   );

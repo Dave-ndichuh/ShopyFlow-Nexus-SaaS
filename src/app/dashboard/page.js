@@ -8,6 +8,7 @@ import Link from 'next/link';
 
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
+  const [employeeDetails, setEmployeeDetails] = useState(null);
   const [metrics, setMetrics] = useState({ todaySales: 0, todayRevenue: 0, pendingCredit: 0 });
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -18,13 +19,24 @@ export default function EmployeeDashboard() {
         router.push('/login');
       } else {
         setUser(user);
-        fetchMetrics();
+        fetchMetrics(user);
       }
     });
   }, [router]);
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (currentUser) => {
     setLoading(true);
+    
+    // Fetch Employee Details
+    if (currentUser?.email) {
+      const { data: empData } = await supabase
+        .from('employee')
+        .select('FIRST_NAME, LAST_NAME, USERNAME')
+        .eq('EMAIL', currentUser.email)
+        .maybeSingle();
+      if (empData) setEmployeeDetails(empData);
+    }
+
     // Get today's bounds in local time
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -42,10 +54,6 @@ export default function EmployeeDashboard() {
       const todaySales = transData.length;
       const todayRevenue = transData.reduce((acc, t) => acc + (t.ADJUSTED_TOTAL || t.GRAND_TOTAL), 0);
       
-      // All-time pending credit sales count (assuming a credit sale is pending if it's logged, 
-      // in a real app there might be a status, but we will just count all IS_CREDIT=true for now 
-      // or maybe credit sales logged today)
-      // Let's get total all-time credit sales for them to follow up
       const { count: creditCount } = await supabase
         .from('transaction')
         .select('*', { count: 'exact', head: true })
@@ -70,7 +78,9 @@ export default function EmployeeDashboard() {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
         <div>
           <h1 className="heading-1" style={{ marginBottom: '0.5rem' }}>Employee Dashboard</h1>
-          <p className="text-muted" style={{ fontSize: '1.125rem' }}>Welcome back, {user.email}</p>
+          <p className="text-muted" style={{ fontSize: '1.125rem' }}>
+            Welcome back, {employeeDetails ? <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{employeeDetails.FIRST_NAME} {employeeDetails.LAST_NAME} (@{employeeDetails.USERNAME})</span> : user.email}
+          </p>
         </div>
         <button onClick={handleLogout} className="btn btn-secondary" style={{ color: '#ef4444' }}>
           <LogOut size={18} /> Logout

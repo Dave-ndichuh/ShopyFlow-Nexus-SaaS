@@ -95,8 +95,7 @@ export default function POSPage() {
 
   // Calculations
   const subtotal = cart.reduce((acc, item) => acc + (item.PRICE * item.quantity), 0);
-  const vat = subtotal * 0.16;
-  const totalBeforeDiscount = subtotal + vat;
+  const totalBeforeDiscount = subtotal;
   const grandTotal = Math.max(0, totalBeforeDiscount - discountAmount);
 
   // Validate Hybrid Math
@@ -165,7 +164,7 @@ export default function POSPage() {
       // Create Transaction
       const { data: transData, error: transErr } = await supabase.from('transaction').insert([{
         SUBTOTAL: subtotal,
-        TAX_AMOUNT: vat,
+        TAX_AMOUNT: 0,
         GRAND_TOTAL: totalBeforeDiscount,
         DISCOUNT_AMOUNT: discountAmount,
         ADJUSTED_TOTAL: grandTotal,
@@ -384,10 +383,6 @@ export default function POSPage() {
             <span className="text-muted">Subtotal</span>
             <span>Ksh. {subtotal.toLocaleString()}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
-            <span className="text-muted">VAT (16%)</span>
-            <span>Ksh. {vat.toLocaleString()}</span>
-          </div>
           {discountAmount !== 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.875rem', color: discountAmount > 0 ? '#10b981' : '#ef4444' }}>
               <span>{discountAmount > 0 ? 'Discount' : 'Surcharge'}</span>
@@ -466,7 +461,6 @@ export default function POSPage() {
         transaction={lastTransaction} 
         cart={cart} 
         subtotal={subtotal} 
-        vat={vat} 
         grandTotal={grandTotal} 
       />
     </div>

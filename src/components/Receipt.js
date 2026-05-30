@@ -6,7 +6,7 @@ export default function Receipt({ transaction, cart, subtotal, vat, grandTotal }
   return (
     <div className="receipt-print-area" style={{ display: 'none', background: 'white', color: 'black', width: '300px', padding: '20px', fontFamily: 'monospace' }}>
       <div style={{ textAlign: 'center', borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '10px' }}>
-        <h2 style={{ margin: '0 0 5px 0', fontSize: '18px' }}>AUTO SPARES PRO</h2>
+        <h2 style={{ margin: '0 0 5px 0', fontSize: '18px' }}>JOBEA AUTO SPARES</h2>
         <p style={{ margin: 0, fontSize: '12px' }}>Nairobi, Kenya</p>
         <p style={{ margin: 0, fontSize: '12px' }}>Tel: +254 700 000 000</p>
       </div>
@@ -41,10 +41,6 @@ export default function Receipt({ transaction, cart, subtotal, vat, grandTotal }
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
           <span>Subtotal:</span>
           <span>Ksh {subtotal.toLocaleString()}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-          <span>VAT (16%):</span>
-          <span>Ksh {vat.toLocaleString()}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '5px' }}>
           <span>Total:</span>

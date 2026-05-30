@@ -288,14 +288,14 @@ export default function ReportsPage() {
                   <BarChart data={categoryData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                     <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tick={{ fill: 'var(--muted-foreground)' }} />
-                    <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(value) => \`\${value / 1000}k\`} />
+                    <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(value) => `${value / 1000}k`} />
                     <RechartsTooltip 
                       contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                      formatter={(value) => [\`Ksh \${value.toLocaleString()}\`, 'Revenue']}
+                      formatter={(value) => [`Ksh ${value.toLocaleString()}`, 'Revenue']}
                     />
                     <Bar dataKey="Revenue" fill="var(--primary)" radius={[4, 4, 0, 0]}>
                       {categoryData.map((entry, index) => (
-                        <Cell key={\`cell-\${index}\`} fill={index % 2 === 0 ? 'var(--primary)' : '#8b5cf6'} />
+                        <Cell key={`cell-${index}`} fill={index % 2 === 0 ? 'var(--primary)' : '#8b5cf6'} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -338,7 +338,7 @@ export default function ReportsPage() {
             <div className="glass" style={{ flex: 1, padding: '1.5rem', overflowX: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
                 <AlertCircle size={20} color="#ef4444" />
-                <h3 className="heading-2" style={{ fontSize: '1.25rem', margin: 0, color: '#ef4444' }}>Dead Stock (0 Sales, >10 Stock)</h3>
+                <h3 className="heading-2" style={{ fontSize: '1.25rem', margin: 0, color: '#ef4444' }}>Dead Stock (0 Sales, &gt;10 Stock)</h3>
               </div>
               <table className="table">
                 <thead>

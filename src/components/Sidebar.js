@@ -16,10 +16,17 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [role, setRole] = useState('admin');
+
+  useEffect(() => {
+    const savedRole = localStorage.getItem('user-role');
+    if (savedRole) setRole(savedRole);
+  }, [pathname]);
 
   // Hide sidebar on login page
   if (pathname === '/login') return null;
@@ -29,7 +36,7 @@ export default function Sidebar() {
     router.push('/login');
   };
 
-  const navItems = [
+  let navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Point of Sale', path: '/pos', icon: ShoppingCart },
     { name: 'Products', path: '/products', icon: Package },
@@ -41,10 +48,18 @@ export default function Sidebar() {
     { name: 'Employees', path: '/employees', icon: Users },
   ];
 
+  if (role === 'employee') {
+    navItems = [
+      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+      { name: 'Point of Sale', path: '/pos', icon: ShoppingCart },
+      { name: 'Services', path: '/services', icon: Wrench },
+    ];
+  }
+
   return (
     <aside className="sidebar glass-panel">
       <div className="sidebar-header">
-        <h2 className="heading-2" style={{ marginBottom: 0, fontSize: '1.25rem', color: 'var(--primary)' }}>AutoSpares Pro</h2>
+        <h2 className="heading-2" style={{ marginBottom: 0, fontSize: '1.25rem', color: 'var(--primary)' }}>Jobea Auto</h2>
       </div>
       
       <nav className="sidebar-nav">

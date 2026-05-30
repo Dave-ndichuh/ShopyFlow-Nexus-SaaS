@@ -2,6 +2,7 @@ import './globals.css';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import { ThemeProvider } from '@/context/ThemeContext';
+import AuthGuard from '@/components/AuthGuard';
 
 export const metadata = {
   title: 'Auto Spare Parts Management',
@@ -13,15 +14,17 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <ThemeProvider>
-          <div className="app-layout">
-            <Sidebar />
-            <div className="main-content">
-              <Topbar />
-              <main className="page-content">
-                {children}
-              </main>
+          <AuthGuard>
+            <div className="app-layout">
+              <Sidebar />
+              <div className="main-content">
+                <Topbar />
+                <main className="page-content">
+                  {children}
+                </main>
+              </div>
             </div>
-          </div>
+          </AuthGuard>
         </ThemeProvider>
       </body>
     </html>

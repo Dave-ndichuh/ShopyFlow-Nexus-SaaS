@@ -57,7 +57,7 @@ export default function POSPage() {
   const getFilteredProducts = () => {
     let filtered = products;
     if (selectedCategory) {
-      filtered = filtered.filter(p => p.CATEGORY_ID === selectedCategory.CATEGORY_ID);
+      filtered = filtered.filter(p => String(p.CATEGORY_ID) === String(selectedCategory.CATEGORY_ID));
     }
     if (searchTerm) {
       filtered = filtered.filter(p => 

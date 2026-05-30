@@ -31,7 +31,7 @@ export default function POSPage() {
   const [creditTerms, setCreditTerms] = useState('');
   
   // Adjustments
-  const [discountAmount, setDiscountAmount] = useState(0); // positive is discount, negative is surcharge
+  const [discountAmount, setDiscountAmount] = useState(''); // positive is discount, negative is surcharge
   
   const [lastTransaction, setLastTransaction] = useState(null);
 
@@ -96,7 +96,7 @@ export default function POSPage() {
   // Calculations
   const subtotal = cart.reduce((acc, item) => acc + (item.PRICE * item.quantity), 0);
   const totalBeforeDiscount = subtotal;
-  const grandTotal = Math.max(0, totalBeforeDiscount - discountAmount);
+  const grandTotal = Math.max(0, totalBeforeDiscount - (Number(discountAmount) || 0));
 
   // Validate Hybrid Math
   const isHybridValid = () => {
@@ -166,7 +166,7 @@ export default function POSPage() {
         SUBTOTAL: subtotal,
         TAX_AMOUNT: 0,
         GRAND_TOTAL: totalBeforeDiscount,
-        DISCOUNT_AMOUNT: discountAmount,
+        DISCOUNT_AMOUNT: Number(discountAmount) || 0,
         ADJUSTED_TOTAL: grandTotal,
         
         PAYMENT_METHOD: paymentMethod,
@@ -210,7 +210,7 @@ export default function POSPage() {
         setCreditCustomerId('');
         setCreditDueDate('');
         setCreditTerms('');
-        setDiscountAmount(0);
+        setDiscountAmount('');
         setSelectedCategory(null);
       }, 500);
 
@@ -371,15 +371,34 @@ export default function POSPage() {
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
             <Tag size={16} className="text-muted" />
             <span style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Discount (Ksh):</span>
-            <input 
-              type="number" 
-              className="input" 
-              style={{ padding: '0.25rem 0.5rem', height: '30px', width: '100px' }} 
-              value={discountAmount} 
-              onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)} 
-            />
+            
+            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: '0 0.75rem', height: '32px', border: 'none', borderRight: '1px solid var(--border)', borderRadius: 0 }}
+                onClick={() => setDiscountAmount(prev => (Number(prev) || 0) - 100)}
+              >
+                <Minus size={14} />
+              </button>
+              <input 
+                type="number" 
+                className="input" 
+                style={{ padding: '0.25rem 0.5rem', height: '32px', width: '80px', border: 'none', borderRadius: 0, textAlign: 'center', background: 'transparent' }} 
+                value={discountAmount} 
+                onChange={(e) => setDiscountAmount(e.target.value)} 
+                placeholder="0"
+              />
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: '0 0.75rem', height: '32px', border: 'none', borderLeft: '1px solid var(--border)', borderRadius: 0 }}
+                onClick={() => setDiscountAmount(prev => (Number(prev) || 0) + 100)}
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+            
             <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', flex: 1, textAlign: 'right' }}>
-              *Use negative for surcharge
+              *negative = surcharge
             </span>
           </div>
 
@@ -387,10 +406,10 @@ export default function POSPage() {
             <span className="text-muted">Subtotal</span>
             <span>Ksh. {subtotal.toLocaleString()}</span>
           </div>
-          {discountAmount !== 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.875rem', color: discountAmount > 0 ? '#10b981' : '#ef4444' }}>
-              <span>{discountAmount > 0 ? 'Discount' : 'Surcharge'}</span>
-              <span>- Ksh. {discountAmount.toLocaleString()}</span>
+          {Number(discountAmount) !== 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.875rem', color: Number(discountAmount) > 0 ? '#10b981' : '#ef4444' }}>
+              <span>{Number(discountAmount) > 0 ? 'Discount' : 'Surcharge'}</span>
+              <span>- Ksh. {Number(discountAmount).toLocaleString()}</span>
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem', marginTop: '0.5rem', fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)' }}>

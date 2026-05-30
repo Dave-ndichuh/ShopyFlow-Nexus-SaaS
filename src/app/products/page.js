@@ -16,8 +16,8 @@ export default function ProductsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    PRODUCT_CODE: '', NAME: '', DESCRIPTION: '', ON_HAND: 0, PRICE: 0, CATEGORY_ID: '', SUPPLIER_ID: '',
-    STATUS: 'active', UOM: 'pcs', REORDER_THRESHOLD: 5, COST_PRICE: 0, BARCODE: '', IMAGE_URL: '', TAX_RATE: 16.0, BRAND: '', WEIGHT: ''
+    PRODUCT_CODE: '', NAME: '', DESCRIPTION: '', ON_HAND: '', PRICE: '', CATEGORY_ID: '', SUPPLIER_ID: '',
+    STATUS: 'active', UOM: 'pcs', REORDER_THRESHOLD: 5, COST_PRICE: '', BARCODE: '', IMAGE_URL: '', TAX_RATE: 16.0, BRAND: '', MODEL: '', WEIGHT: ''
   });
 
   const fetchProducts = async () => {
@@ -74,13 +74,14 @@ export default function ProductsPage() {
         IMAGE_URL: product.IMAGE_URL || '',
         TAX_RATE: product.TAX_RATE || 16.0,
         BRAND: product.BRAND || '',
+        MODEL: product.MODEL || '',
         WEIGHT: product.WEIGHT || ''
       });
     } else {
       setEditingId(null);
       setFormData({ 
-        PRODUCT_CODE: '', NAME: '', DESCRIPTION: '', ON_HAND: 0, PRICE: 0, CATEGORY_ID: '', SUPPLIER_ID: '',
-        STATUS: 'active', UOM: 'pcs', REORDER_THRESHOLD: 5, COST_PRICE: 0, BARCODE: '', IMAGE_URL: '', TAX_RATE: 16.0, BRAND: '', WEIGHT: ''
+        PRODUCT_CODE: '', NAME: '', DESCRIPTION: '', ON_HAND: '', PRICE: '', CATEGORY_ID: '', SUPPLIER_ID: '',
+        STATUS: 'active', UOM: 'pcs', REORDER_THRESHOLD: 5, COST_PRICE: '', BARCODE: '', IMAGE_URL: '', TAX_RATE: 16.0, BRAND: '', MODEL: '', WEIGHT: ''
       });
     }
     setShowModal(true);
@@ -88,7 +89,13 @@ export default function ProductsPage() {
 
   const saveProduct = async (e) => {
     e.preventDefault();
-    const payload = { ...formData, DATE_STOCK_IN: new Date().toISOString() };
+    const payload = { 
+      ...formData, 
+      DATE_STOCK_IN: new Date().toISOString(),
+      PRICE: Number(formData.PRICE) || 0,
+      COST_PRICE: Number(formData.COST_PRICE) || 0,
+      ON_HAND: Number(formData.ON_HAND) || 0
+    };
     
     let errorMsg = null;
     if (editingId) {
@@ -168,7 +175,14 @@ export default function ProductsPage() {
                           <ImageIcon size={20} className="text-muted" />
                         </div>
                       )}
-                      {product.NAME}
+                      <div>
+                        <div>{product.NAME}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', fontWeight: 'normal', marginTop: '0.125rem' }}>
+                          {product.BRAND && <span>{product.BRAND}</span>}
+                          {product.BRAND && product.MODEL && <span> • </span>}
+                          {product.MODEL && <span>{product.MODEL}</span>}
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td className="text-muted">{product.category?.CNAME || 'N/A'}</td>
@@ -236,6 +250,11 @@ export default function ProductsPage() {
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Brand</label>
                     <input type="text" className="input" placeholder="e.g. Bosch" value={formData.BRAND} onChange={e => setFormData({...formData, BRAND: e.target.value})} />
                   </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Model / Application</label>
+                    <input type="text" className="input" placeholder="e.g. Toyota Hilux 2020+" value={formData.MODEL} onChange={e => setFormData({...formData, MODEL: e.target.value})} />
+                  </div>
                   
                   <div>
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Barcode (Optional)</label>
@@ -273,7 +292,7 @@ export default function ProductsPage() {
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Current Stock</label>
-                      <input type="number" className="input" placeholder="0" value={formData.ON_HAND} onChange={e => setFormData({...formData, ON_HAND: parseInt(e.target.value) || 0})} required />
+                      <input type="number" min="0" className="input" placeholder="0" value={formData.ON_HAND} onChange={e => setFormData({...formData, ON_HAND: e.target.value === '' ? '' : Number(e.target.value)})} required />
                     </div>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Unit of Measure</label>
@@ -295,11 +314,11 @@ export default function ProductsPage() {
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Cost Price (Ksh)</label>
-                      <input type="number" className="input" placeholder="0" value={formData.COST_PRICE} onChange={e => setFormData({...formData, COST_PRICE: parseInt(e.target.value) || 0})} />
+                      <input type="number" min="0" className="input" placeholder="0" value={formData.COST_PRICE} onChange={e => setFormData({...formData, COST_PRICE: e.target.value === '' ? '' : Number(e.target.value)})} />
                     </div>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Selling Price (Ksh)</label>
-                      <input type="number" className="input" placeholder="0" value={formData.PRICE} onChange={e => setFormData({...formData, PRICE: parseInt(e.target.value) || 0})} required />
+                      <input type="number" min="0" className="input" placeholder="0" value={formData.PRICE} onChange={e => setFormData({...formData, PRICE: e.target.value === '' ? '' : Number(e.target.value)})} required />
                     </div>
                   </div>
 

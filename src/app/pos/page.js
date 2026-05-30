@@ -2,39 +2,77 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Search, Plus, Minus, Trash2, CreditCard, Loader2, ShoppingCart, Smartphone, Printer } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, CreditCard, Loader2, ShoppingCart, Smartphone, ArrowLeft, Tag, Layers, User as UserIcon, Calendar } from 'lucide-react';
 import Receipt from '@/components/Receipt';
 
 export default function POSPage() {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  
+  const [selectedCategory, setSelectedCategory] = useState(null); // null means show categories
   const [searchTerm, setSearchTerm] = useState('');
+  
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  
+  // Payment State
+  const [paymentMethod, setPaymentMethod] = useState('Cash'); // Cash, M-Pesa, Hybrid, Credit
   const [mpesaPhone, setMpesaPhone] = useState('');
+  
+  // Hybrid State
+  const [hybridCash, setHybridCash] = useState('');
+  const [hybridMpesa, setHybridMpesa] = useState('');
+  
+  // Credit State
+  const [creditCustomerId, setCreditCustomerId] = useState('');
+  const [creditDueDate, setCreditDueDate] = useState('');
+  const [creditTerms, setCreditTerms] = useState('');
+  
+  // Adjustments
+  const [discountAmount, setDiscountAmount] = useState(0); // positive is discount, negative is surcharge
+  
   const [lastTransaction, setLastTransaction] = useState(null);
 
-  const fetchProducts = async () => {
-    const { data } = await supabase.from('product').select('*').gt('ON_HAND', 0);
-    if (data) setProducts(data);
+  const fetchData = async () => {
+    setLoading(true);
+    const [prodRes, catRes, custRes] = await Promise.all([
+      supabase.from('product').select('*').gt('ON_HAND', 0),
+      supabase.from('category').select('*'),
+      supabase.from('customer').select('*')
+    ]);
+    
+    if (prodRes.data) setProducts(prodRes.data);
+    if (catRes.data) setCategories(catRes.data);
+    if (custRes.data) setCustomers(custRes.data);
+    
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchProducts();
+    fetchData();
   }, []);
 
-  const filteredProducts = products.filter(p => 
-    p.NAME?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.PRODUCT_CODE?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getFilteredProducts = () => {
+    let filtered = products;
+    if (selectedCategory) {
+      filtered = filtered.filter(p => p.CATEGORY_ID === selectedCategory.CATEGORY_ID);
+    }
+    if (searchTerm) {
+      filtered = filtered.filter(p => 
+        p.NAME?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.PRODUCT_CODE?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    return filtered;
+  };
 
   const addToCart = (product) => {
     setCart(prev => {
       const existing = prev.find(item => item.PRODUCT_ID === product.PRODUCT_ID);
       if (existing) {
-        if (existing.quantity >= product.ON_HAND) return prev; // Max stock
+        if (existing.quantity >= product.ON_HAND) return prev;
         return prev.map(item => item.PRODUCT_ID === product.PRODUCT_ID ? { ...item, quantity: item.quantity + 1 } : item);
       }
       return [...prev, { ...product, quantity: 1 }];
@@ -55,9 +93,18 @@ export default function POSPage() {
 
   const removeFromCart = (id) => setCart(prev => prev.filter(item => item.PRODUCT_ID !== id));
 
+  // Calculations
   const subtotal = cart.reduce((acc, item) => acc + (item.PRICE * item.quantity), 0);
-  const vat = subtotal * 0.16; // 16% VAT for Kenya
-  const grandTotal = subtotal + vat;
+  const vat = subtotal * 0.16;
+  const totalBeforeDiscount = subtotal + vat;
+  const grandTotal = Math.max(0, totalBeforeDiscount - discountAmount);
+
+  // Validate Hybrid Math
+  const isHybridValid = () => {
+    const cash = Number(hybridCash) || 0;
+    const mpesa = Number(hybridMpesa) || 0;
+    return Math.abs((cash + mpesa) - grandTotal) < 0.01;
+  };
 
   const checkout = async () => {
     if (cart.length === 0) return;
@@ -67,37 +114,78 @@ export default function POSPage() {
       return;
     }
 
+    if (paymentMethod === 'Hybrid' && !isHybridValid()) {
+      alert(`Hybrid payments must equal exactly Ksh. ${grandTotal.toLocaleString()}`);
+      return;
+    }
+
+    if (paymentMethod === 'Credit') {
+      if (!creditCustomerId) {
+        alert("Please select a customer for this Credit Sale.");
+        return;
+      }
+      if (!creditDueDate) {
+        alert("Please select a Due Date for this Credit Sale.");
+        return;
+      }
+    }
+
     setCheckingOut(true);
 
     try {
-      // --- M-PESA STK PUSH (If selected) ---
-      if (paymentMethod === 'M-Pesa') {
+      // Setup payload based on method
+      let cashAmt = 0;
+      let mpesaAmt = 0;
+      let isCredit = false;
+
+      if (paymentMethod === 'Cash') cashAmt = grandTotal;
+      if (paymentMethod === 'M-Pesa') mpesaAmt = grandTotal;
+      if (paymentMethod === 'Hybrid') {
+        cashAmt = Number(hybridCash) || 0;
+        mpesaAmt = Number(hybridMpesa) || 0;
+      }
+      if (paymentMethod === 'Credit') {
+        isCredit = true;
+      }
+
+      // --- M-PESA STK PUSH ---
+      if (paymentMethod === 'M-Pesa' || (paymentMethod === 'Hybrid' && mpesaAmt > 0)) {
+        if (!mpesaPhone || mpesaPhone.length < 9) throw new Error("M-Pesa phone number required.");
+        
         const mpesaRes = await fetch('/api/mpesa/stkpush', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: mpesaPhone, amount: grandTotal })
+          body: JSON.stringify({ phone: mpesaPhone, amount: mpesaAmt })
         });
         const mpesaData = await mpesaRes.json();
-        
         if (mpesaData.error) throw new Error(mpesaData.error);
-        
-        // Wait for the customer to put in PIN (Simulated in this demo by just continuing)
-        // In a real app, you would poll the Safaricom Callback URL status here.
-        alert(`M-Pesa STK Prompt sent to ${mpesaPhone}. Awaiting PIN...`);
+        alert(`M-Pesa STK Prompt sent to ${mpesaPhone} for Ksh ${mpesaAmt}. Awaiting PIN...`);
       }
 
-      // 1. Create Transaction
+      // Create Transaction
       const { data: transData, error: transErr } = await supabase.from('transaction').insert([{
         SUBTOTAL: subtotal,
         TAX_AMOUNT: vat,
-        GRAND_TOTAL: grandTotal,
-        CASH_TENDERED: grandTotal,
-        PAYMENT_METHOD: paymentMethod
+        GRAND_TOTAL: totalBeforeDiscount,
+        DISCOUNT_AMOUNT: discountAmount,
+        ADJUSTED_TOTAL: grandTotal,
+        
+        PAYMENT_METHOD: paymentMethod,
+        CASH_AMOUNT: cashAmt,
+        MPESA_AMOUNT: mpesaAmt,
+        HYBRID_PAYMENT: paymentMethod === 'Hybrid',
+        
+        IS_CREDIT: isCredit,
+        CREDIT_CUSTOMER_ID: isCredit ? parseInt(creditCustomerId) : null,
+        CREDIT_DUE_DATE: isCredit ? creditDueDate : null,
+        CREDIT_TERMS: isCredit ? creditTerms : null,
+        
+        CASH_TENDERED: isCredit ? 0 : grandTotal // simple assumption
       }]).select().single();
 
       if (transErr) throw transErr;
 
-      // 2. Create Transaction Details
+      // Create Details
       const details = cart.map(item => ({
         TRANS_ID: transData.TRANS_ID,
         PRODUCT_ID: item.PRODUCT_ID,
@@ -109,20 +197,25 @@ export default function POSPage() {
       const { error: detErr } = await supabase.from('transaction_details').insert(details);
       if (detErr) throw detErr;
 
-      // Note: Inventory update is now handled automatically by Postgres Triggers!
-
       alert(`Success! Transaction #${transData.TRANS_ID} completed.`);
       
-      // Keep cart in memory just long enough for Receipt to render, then trigger print
       setLastTransaction(transData);
       setTimeout(() => {
         window.print();
+        // Reset
         setCart([]);
         setLastTransaction(null);
         setMpesaPhone('');
+        setHybridCash('');
+        setHybridMpesa('');
+        setCreditCustomerId('');
+        setCreditDueDate('');
+        setCreditTerms('');
+        setDiscountAmount(0);
+        setSelectedCategory(null);
       }, 500);
 
-      fetchProducts(); // Refresh inventory
+      fetchData();
     } catch (err) {
       alert('Error during checkout: ' + err.message);
     } finally {
@@ -132,41 +225,96 @@ export default function POSPage() {
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', gap: '2rem', height: 'calc(100vh - 120px)' }}>
-      {/* Product Selection */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        <div style={{ position: 'relative' }}>
-          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
-          <input 
-            type="text" 
-            placeholder="Search parts by name or code..." 
-            className="input" 
-            style={{ paddingLeft: '2.5rem', background: 'var(--card)' }}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      
+      {/* Left Area: Categories or Products */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden' }}>
+        
+        {/* Header Bar */}
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {selectedCategory ? (
+            <button className="btn btn-secondary" onClick={() => setSelectedCategory(null)} style={{ padding: '0.5rem 1rem' }}>
+              <ArrowLeft size={18} /> Back to Categories
+            </button>
+          ) : (
+            <div style={{ padding: '0.5rem 1rem', background: 'var(--primary)', color: 'var(--primary-foreground)', borderRadius: 'var(--radius)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Layers size={18} /> Select a Category
+            </div>
+          )}
+
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
+            <input 
+              type="text" 
+              placeholder="Search parts by name or code..." 
+              className="input" 
+              style={{ paddingLeft: '2.5rem', background: 'var(--card)' }}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
 
-        <div className="grid-cards" style={{ overflowY: 'auto', paddingRight: '0.5rem', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-          {loading ? <p>Loading products...</p> : filteredProducts.map(product => (
-            <button 
-              key={product.PRODUCT_ID} 
-              className="glass" 
-              style={{ padding: '1rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.5rem', transition: 'transform 0.1s' }}
-              onClick={() => addToCart(product)}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                <span className="badge badge-warning">{product.PRODUCT_CODE}</span>
-                <span className="text-muted" style={{ fontSize: '0.875rem' }}>Stock: {product.ON_HAND}</span>
+        {/* Content Grid */}
+        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
+          {loading ? (
+            <p>Loading catalog...</p>
+          ) : !selectedCategory && !searchTerm ? (
+            // Show Categories
+            <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+              {categories.map(cat => (
+                <button 
+                  key={cat.CATEGORY_ID} 
+                  className="glass"
+                  style={{ padding: '2rem 1rem', textAlign: 'center', transition: 'all 0.2s', borderBottom: '4px solid var(--primary)' }}
+                  onClick={() => setSelectedCategory(cat)}
+                >
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>{cat.CNAME}</h3>
+                  <p className="text-muted" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>View parts</p>
+                </button>
+              ))}
+            </div>
+          ) : (
+            // Show Products
+            <div>
+              {selectedCategory && !searchTerm && (
+                <h3 className="heading-2" style={{ marginBottom: '1.5rem', color: 'var(--primary)' }}>
+                  {selectedCategory.CNAME}
+                </h3>
+              )}
+              <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+                {getFilteredProducts().map(product => (
+                  <button 
+                    key={product.PRODUCT_ID} 
+                    className="glass" 
+                    style={{ padding: '1rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.5rem', transition: 'transform 0.1s' }}
+                    onClick={() => addToCart(product)}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span className="badge badge-warning">{product.PRODUCT_CODE}</span>
+                      <span className="text-muted" style={{ fontSize: '0.875rem' }}>Stock: {product.ON_HAND}</span>
+                    </div>
+                    <div>
+                      <h4 style={{ fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.25rem' }}>{product.NAME}</h4>
+                      {(product.BRAND || product.MODEL) && (
+                        <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
+                          {product.BRAND} {product.MODEL}
+                        </p>
+                      )}
+                    </div>
+                    <p style={{ color: 'var(--primary)', fontWeight: 700, marginTop: 'auto' }}>Ksh. {product.PRICE?.toLocaleString()}</p>
+                  </button>
+                ))}
+                {getFilteredProducts().length === 0 && (
+                  <p className="text-muted">No products found.</p>
+                )}
               </div>
-              <h4 style={{ fontWeight: 600, color: 'var(--foreground)' }}>{product.NAME}</h4>
-              <p style={{ color: 'var(--primary)', fontWeight: 700 }}>Ksh. {product.PRICE?.toLocaleString()}</p>
-            </button>
-          ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Cart Panel */}
-      <div className="glass" style={{ width: '400px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Right Area: Cart Panel */}
+      <div className="glass" style={{ width: '450px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
           <h2 className="heading-2" style={{ margin: 0 }}>Current Sale</h2>
         </div>
@@ -182,7 +330,7 @@ export default function POSPage() {
               {cart.map(item => (
                 <div key={item.PRODUCT_ID} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: 'var(--radius)' }}>
                   <div style={{ flex: 1 }}>
-                    <h5 style={{ fontWeight: 500 }}>{item.NAME}</h5>
+                    <h5 style={{ fontWeight: 500, fontSize: '0.95rem' }}>{item.NAME}</h5>
                     <p className="text-muted" style={{ fontSize: '0.875rem' }}>Ksh. {item.PRICE.toLocaleString()}</p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -203,59 +351,101 @@ export default function POSPage() {
           )}
         </div>
 
-        <div style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+        <div style={{ padding: '1.25rem', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border)' }}>
+          
+          {/* Adjustments Section */}
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
+            <Tag size={16} className="text-muted" />
+            <span style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Discount (Ksh):</span>
+            <input 
+              type="number" 
+              className="input" 
+              style={{ padding: '0.25rem 0.5rem', height: '30px', width: '100px' }} 
+              value={discountAmount} 
+              onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)} 
+            />
+            <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', flex: 1, textAlign: 'right' }}>
+              *Use negative for surcharge
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
             <span className="text-muted">Subtotal</span>
             <span>Ksh. {subtotal.toLocaleString()}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
             <span className="text-muted">VAT (16%)</span>
             <span>Ksh. {vat.toLocaleString()}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)' }}>
+          {discountAmount !== 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.875rem', color: discountAmount > 0 ? '#10b981' : '#ef4444' }}>
+              <span>{discountAmount > 0 ? 'Discount' : 'Surcharge'}</span>
+              <span>- Ksh. {discountAmount.toLocaleString()}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem', marginTop: '0.5rem', fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)' }}>
             <span>Total</span>
             <span>Ksh. {grandTotal.toLocaleString()}</span>
           </div>
           
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-            <button 
-              className={`btn ${paymentMethod === 'Cash' ? 'btn-primary' : 'btn-secondary'}`} 
-              style={{ flex: 1 }}
-              onClick={() => setPaymentMethod('Cash')}
-            >
-              Cash
-            </button>
-            <button 
-              className={`btn ${paymentMethod === 'M-Pesa' ? 'btn-primary' : 'btn-secondary'}`} 
-              style={{ flex: 1, backgroundColor: paymentMethod === 'M-Pesa' ? '#25D366' : '' }}
-              onClick={() => setPaymentMethod('M-Pesa')}
-            >
-              <Smartphone size={16} style={{ marginRight: '0.5rem' }} />
-              M-Pesa
-            </button>
+          {/* Payment Method Selector */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
+            <button className={`btn ${paymentMethod === 'Cash' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('Cash')} style={{ padding: '0.5rem' }}>Cash</button>
+            <button className={`btn ${paymentMethod === 'M-Pesa' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('M-Pesa')} style={{ padding: '0.5rem', backgroundColor: paymentMethod === 'M-Pesa' ? '#25D366' : '' }}>M-Pesa</button>
+            <button className={`btn ${paymentMethod === 'Hybrid' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('Hybrid')} style={{ padding: '0.5rem' }}>Hybrid</button>
+            <button className={`btn ${paymentMethod === 'Credit' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('Credit')} style={{ padding: '0.5rem', backgroundColor: paymentMethod === 'Credit' ? '#f59e0b' : '' }}>Credit Sale</button>
           </div>
 
+          {/* Conditional Inputs based on Method */}
           {paymentMethod === 'M-Pesa' && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <input 
-                type="tel" 
-                className="input" 
-                placeholder="Customer Phone (e.g. 07...)" 
-                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #25D366' }}
-                value={mpesaPhone}
-                onChange={(e) => setMpesaPhone(e.target.value)}
-              />
+            <input type="tel" className="input" placeholder="Phone (e.g. 07...)" style={{ marginBottom: '1rem', border: '1px solid #25D366' }} value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} />
+          )}
+
+          {paymentMethod === 'Hybrid' && (
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>Cash Amt</label>
+                <input type="number" className="input" value={hybridCash} onChange={e => setHybridCash(e.target.value)} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>M-Pesa Amt</label>
+                <input type="number" className="input" style={{ border: '1px solid #25D366' }} value={hybridMpesa} onChange={e => setHybridMpesa(e.target.value)} />
+              </div>
             </div>
+          )}
+
+          {paymentMethod === 'Credit' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+              <select className="input" value={creditCustomerId} onChange={e => setCreditCustomerId(e.target.value)}>
+                <option value="" disabled>Select Customer...</option>
+                {customers.map(c => <option key={c.CUST_ID} value={c.CUST_ID}>{c.FIRST_NAME} {c.LAST_NAME}</option>)}
+              </select>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>Due Date</label>
+                  <input type="date" className="input" value={creditDueDate} onChange={e => setCreditDueDate(e.target.value)} />
+                </div>
+              </div>
+              <input type="text" className="input" placeholder="Terms / Notes..." value={creditTerms} onChange={e => setCreditTerms(e.target.value)} />
+            </div>
+          )}
+
+          {(paymentMethod === 'Hybrid' && Number(hybridMpesa) > 0) && (
+            <input type="tel" className="input" placeholder="M-Pesa Phone (07...)" style={{ marginBottom: '1rem', border: '1px solid #25D366' }} value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} />
           )}
 
           <button 
             className="btn btn-primary" 
-            style={{ width: '100%', padding: '1rem', fontSize: '1.125rem', backgroundColor: paymentMethod === 'M-Pesa' ? '#25D366' : 'var(--primary)' }}
+            style={{ width: '100%', padding: '1rem', fontSize: '1.125rem', 
+              backgroundColor: paymentMethod === 'M-Pesa' ? '#25D366' : paymentMethod === 'Credit' ? '#f59e0b' : 'var(--primary)' 
+            }}
             disabled={cart.length === 0 || checkingOut}
             onClick={checkout}
           >
-            {checkingOut ? <Loader2 size={20} className="animate-spin" /> : (paymentMethod === 'M-Pesa' ? <Smartphone size={20} /> : <CreditCard size={20} />)}
-            {checkingOut ? 'Processing...' : `Pay Ksh. ${grandTotal.toLocaleString()}`}
+            {checkingOut ? <Loader2 size={20} className="animate-spin" /> : 
+             paymentMethod === 'M-Pesa' ? <Smartphone size={20} /> : 
+             paymentMethod === 'Credit' ? <Calendar size={20} /> : <CreditCard size={20} />}
+            {checkingOut ? 'Processing...' : paymentMethod === 'Credit' ? 'Log Credit Sale' : `Pay Ksh. ${grandTotal.toLocaleString()}`}
           </button>
         </div>
       </div>

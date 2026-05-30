@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Loader2, Sparkles, UserCheck, ArrowLeft, Key, User } from 'lucide-react';
+import { Loader2, ArrowLeft, User, KeyRound, Delete } from 'lucide-react';
 import Link from 'next/link';
 
 export default function EmployeeLoginPage() {
@@ -13,12 +13,27 @@ export default function EmployeeLoginPage() {
   const [error, setError] = useState(null);
   const router = useRouter();
 
+  const handleKeypadPress = (num) => {
+    if (pin.length < 6) {
+      setPin(prev => prev + num);
+      setError(null);
+    }
+  };
+
+  const handleKeypadDelete = () => {
+    setPin(prev => prev.slice(0, -1));
+  };
+
   const handleEmployeeLogin = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
+    if (!username || !pin) {
+      setError('Please enter both Username and PIN.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      // 1. Lookup Email from Username
       const { data: empData, error: dbError } = await supabase
         .from('employee')
         .select('EMAIL')
@@ -29,7 +44,6 @@ export default function EmployeeLoginPage() {
         throw new Error('Invalid Username or PIN.');
       }
 
-      // 2. Sign In to Supabase with Email and PIN
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: empData.EMAIL,
         password: pin,
@@ -39,114 +53,200 @@ export default function EmployeeLoginPage() {
         throw new Error('Invalid Username or PIN.');
       }
 
-      // Success, route to dashboard
       router.push('/dashboard');
-
     } catch (err) {
       setError(err.message);
+      setPin(''); // Clear pin on error
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem',
-    }}>
+    <div className="split-layout">
       <style jsx>{`
-        .login-box { padding: 3rem 2.5rem; }
-        @media (max-width: 640px) { .login-box { padding: 2rem 1.5rem; } }
+        .split-layout {
+          min-height: 100vh;
+          display: flex;
+          background: var(--background);
+        }
+        .brand-panel {
+          flex: 1;
+          background: linear-gradient(135deg, #0f172a 0%, #064e3b 100%);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 4rem;
+          color: white;
+          position: relative;
+          overflow: hidden;
+        }
+        .brand-panel::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-image: url('https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&q=80');
+          background-size: cover;
+          background-position: center;
+          opacity: 0.15;
+          mix-blend-mode: overlay;
+        }
+        .form-panel {
+          flex: 1;
+          max-width: 600px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 4rem;
+          background: var(--card);
+          box-shadow: -20px 0 40px rgba(0,0,0,0.1);
+          z-index: 10;
+        }
+        .keypad {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1rem;
+          margin: 2rem 0;
+        }
+        .keypad-btn {
+          background: var(--background);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          height: 64px;
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: var(--foreground);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .keypad-btn:hover {
+          background: #10b981;
+          color: white;
+          border-color: #10b981;
+          transform: translateY(-2px);
+          box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+        }
+        .keypad-btn:active {
+          transform: translateY(0);
+        }
+        .pin-dots {
+          display: flex;
+          justify-content: center;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+        .pin-dot {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          border: 2px solid #10b981;
+          background: transparent;
+          transition: all 0.2s ease;
+        }
+        .pin-dot.filled {
+          background: #10b981;
+          box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+        @media (max-width: 900px) {
+          .split-layout { flex-direction: column; }
+          .brand-panel { padding: 3rem 2rem; flex: none; text-align: center; }
+          .form-panel { max-width: 100%; padding: 2rem; }
+        }
       `}</style>
-      <div className="glass animate-fade-in login-box" style={{
-        width: '100%',
-        maxWidth: '420px',
-        position: 'relative',
-        overflow: 'hidden',
-        boxShadow: '0 20px 40px -15px rgba(0,0,0,0.5)'
-      }}>
-        {/* Decorative glows */}
-        <div style={{ position: 'absolute', top: '-50px', left: '-50px', width: '150px', height: '150px', background: 'var(--primary)', filter: 'blur(60px)', opacity: 0.3, borderRadius: '50%' }} />
-        <div style={{ position: 'absolute', bottom: '-50px', right: '-50px', width: '150px', height: '150px', background: '#10b981', filter: 'blur(60px)', opacity: 0.2, borderRadius: '50%' }} />
 
-        <div style={{ textAlign: 'center', marginBottom: '2.5rem', position: 'relative' }}>
-          <div style={{ 
-            background: 'linear-gradient(135deg, var(--primary) 0%, #10b981 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            display: 'inline-block',
-            marginBottom: '0.5rem'
-          }}>
-            <h1 style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.05em', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-              Employee Portal <Sparkles size={24} color="#10b981" style={{ WebkitTextFillColor: 'initial' }} />
-            </h1>
+      {/* Left Brand Panel */}
+      <div className="brand-panel">
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.2)', backdropFilter: 'blur(10px)', border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: '2rem' }}>
+            <KeyRound size={32} color="#34d399" />
           </div>
-          <p className="text-muted" style={{ fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.75rem' }}>Secure Fast Access</p>
+          <h1 style={{ fontSize: '3.5rem', fontWeight: 800, lineHeight: 1.1, marginBottom: '1rem', letterSpacing: '-0.02em' }}>
+            Staff Access<br/>Terminal
+          </h1>
+          <p style={{ fontSize: '1.25rem', color: '#94a3b8', maxWidth: '400px', lineHeight: 1.6 }}>
+            Enter your unique username and tap your PIN to access the POS and Service Center.
+          </p>
         </div>
+      </div>
+
+      {/* Right Form Panel */}
+      <div className="form-panel animate-fade-in">
+        
+        <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)', textDecoration: 'none', marginBottom: '3rem', fontSize: '0.875rem', fontWeight: 500, width: 'fit-content' }}>
+          <ArrowLeft size={16} /> Back to Admin
+        </Link>
 
         {error && (
-          <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#ef4444', fontSize: '0.875rem', textAlign: 'center', marginBottom: '1.5rem', position: 'relative' }}>
+          <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '12px', color: '#ef4444', fontSize: '0.875rem', textAlign: 'center', marginBottom: '2rem' }}>
             {error}
           </div>
         )}
 
-        <form onSubmit={handleEmployeeLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--foreground)' }}>Username</label>
+        <form onSubmit={handleEmployeeLogin}>
+          <div style={{ marginBottom: '2.5rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Employee Username
+            </label>
             <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }}>
-                <User size={18} />
+              <div style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }}>
+                <User size={20} />
               </div>
               <input
                 type="text"
                 className="input"
-                style={{ paddingLeft: '2.5rem', height: '48px' }}
+                style={{ paddingLeft: '3rem', height: '56px', fontSize: '1.125rem', borderRadius: '12px', background: 'var(--background)' }}
                 placeholder="e.g. Dmacharia"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => { setUsername(e.target.value); setError(null); }}
                 required
               />
             </div>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--foreground)' }}>Secure PIN</label>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }}>
-                <Key size={18} />
-              </div>
-              <input
-                type="password"
-                className="input"
-                style={{ paddingLeft: '2.5rem', height: '48px', letterSpacing: '0.2em' }}
-                placeholder="••••"
-                maxLength="6"
-                pattern="\d+"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                required
-              />
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '1.5rem', color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>
+              Enter PIN
+            </label>
+            
+            {/* PIN Visualizer */}
+            <div className="pin-dots">
+              {[0, 1, 2, 3].map((index) => (
+                <div key={index} className={`pin-dot ${pin.length > index ? 'filled' : ''}`} />
+              ))}
+            </div>
+
+            {/* POS Keypad */}
+            <div className="keypad">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                <button key={num} type="button" className="keypad-btn" onClick={() => handleKeypadPress(num.toString())}>
+                  {num}
+                </button>
+              ))}
+              <button type="button" className="keypad-btn" onClick={() => setPin('')} style={{ fontSize: '1rem', color: 'var(--muted-foreground)' }}>
+                CLEAR
+              </button>
+              <button type="button" className="keypad-btn" onClick={() => handleKeypadPress('0')}>
+                0
+              </button>
+              <button type="button" className="keypad-btn" onClick={handleKeypadDelete} style={{ color: 'var(--muted-foreground)' }}>
+                <Delete size={24} />
+              </button>
             </div>
           </div>
 
           <button 
             type="submit" 
             className="btn btn-primary" 
-            style={{ width: '100%', marginTop: '0.5rem', height: '48px', fontSize: '1rem', background: '#10b981', color: 'white', border: 'none' }}
-            disabled={loading}
+            style={{ width: '100%', height: '64px', fontSize: '1.125rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 600, boxShadow: '0 10px 25px -5px rgba(16, 185, 129, 0.4)' }}
+            disabled={loading || pin.length < 4}
           >
-            {loading ? <Loader2 size={20} className="animate-spin" /> : <><UserCheck size={18} /> Enter Portal</>}
+            {loading ? <Loader2 size={24} className="animate-spin" /> : 'Access Terminal'}
           </button>
         </form>
-
-        <div style={{ marginTop: '2rem', textAlign: 'center', position: 'relative' }}>
-          <Link href="/login" style={{ color: 'var(--muted-foreground)', fontSize: '0.875rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ArrowLeft size={16} /> Return to Admin Login
-          </Link>
-        </div>
 
       </div>
     </div>

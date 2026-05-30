@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Lock, Mail, Loader2, Sparkles, UserCheck, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -125,11 +124,9 @@ export default function LoginPage() {
 
         <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)', position: 'relative', textAlign: 'center' }}>
           <p className="text-muted" style={{ fontSize: '0.875rem', marginBottom: '1rem' }}>Are you a staff member?</p>
-          <Link href="/employee-login" style={{ textDecoration: 'none' }}>
-            <button className="btn btn-secondary" style={{ width: '100%', height: '48px', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
-              <UserCheck size={18} /> Employee Portal Access <ArrowRight size={16} />
-            </button>
-          </Link>
+          <a href="/employee-login" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', height: '48px', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+            <UserCheck size={18} /> Employee Portal Access <ArrowRight size={16} />
+          </a>
         </div>
 
       </div>

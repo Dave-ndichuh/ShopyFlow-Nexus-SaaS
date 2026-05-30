@@ -28,8 +28,8 @@ export default function Sidebar() {
     if (savedRole) setRole(savedRole);
   }, [pathname]);
 
-  // Hide sidebar on login page
-  if (pathname === '/login') return null;
+  // Hide sidebar on login pages
+  if (pathname === '/login' || pathname === '/employee-login') return null;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

@@ -17,7 +17,8 @@ export default function Topbar() {
     });
   }, []);
 
-  if (pathname === '/login') return null;
+  // Hide topbar on login pages
+  if (pathname === '/login' || pathname === '/employee-login') return null;
 
   // Format the title based on the path
   const getTitle = () => {

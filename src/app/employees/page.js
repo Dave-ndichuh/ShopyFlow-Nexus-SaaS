@@ -260,7 +260,7 @@ export default function EmployeesPage() {
 
                 <div style={{ display: 'flex', gap: '1rem' }}>
                   <input type="text" className="input" placeholder="Location City (e.g. Nairobi)" value={formData.LOCATION_CITY} onChange={e => setFormData({...formData, LOCATION_CITY: e.target.value})} required />
-                  <input type="text" className="input" placeholder="Set 4-to-6 Digit PIN" value={formData.PIN} onChange={e => setFormData({...formData, PIN: e.target.value})} required minLength="4" maxLength="6" pattern="\d+" title="Numeric PIN only" />
+                  <input type="text" className="input" placeholder={editingId ? "PIN cannot be edited here" : "Set 4-to-6 Digit PIN"} value={formData.PIN} onChange={e => setFormData({...formData, PIN: e.target.value})} required={!editingId} minLength="4" maxLength="6" pattern="\d+" title={editingId ? "Cannot change PIN after creation" : "Numeric PIN only"} disabled={!!editingId} />
                 </div>
               </div>
 

@@ -33,7 +33,12 @@ export default function Sidebar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    document.body.classList.remove('sidebar-open');
     router.push('/login');
+  };
+
+  const closeSidebar = () => {
+    document.body.classList.remove('sidebar-open');
   };
 
   let navItems = [
@@ -70,6 +75,7 @@ export default function Sidebar() {
             <Link 
               key={item.path} 
               href={item.path}
+              onClick={closeSidebar}
               className={`nav-item ${isActive ? 'active' : ''}`}
             >
               <Icon size={20} />

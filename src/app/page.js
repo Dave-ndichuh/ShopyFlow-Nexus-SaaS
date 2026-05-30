@@ -181,7 +181,7 @@ export default function Dashboard() {
       {/* Row 1: Key Metrics (This Month) */}
       <div>
         <h2 className="heading-2" style={{ marginBottom: '1rem' }}>This Month's Performance</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
+        <div className="metrics-grid" style={{ display: 'grid', gap: '1.5rem' }}>
           <div className="glass" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)', marginBottom: '0.5rem' }}>
               <TrendingUp size={18} /> <span style={{ fontWeight: 500 }}>Total Sales</span>
@@ -212,7 +212,7 @@ export default function Dashboard() {
       {/* Row 2: Alerts & Quick Insights */}
       <div>
         <h2 className="heading-2" style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Quick Insights & Alerts</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
+        <div className="metrics-grid" style={{ display: 'grid', gap: '1.5rem' }}>
           <div className="glass" style={{ padding: '1.25rem', borderBottom: metrics.lowStockCount > 0 ? '4px solid #ef4444' : '4px solid #10b981' }}>
             <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Low Stock Items</div>
             <div style={{ fontSize: '1.25rem', fontWeight: 600, color: metrics.lowStockCount > 0 ? '#ef4444' : '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -237,7 +237,18 @@ export default function Dashboard() {
       </div>
 
       {/* Row 3: Visual Charts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', flex: 1, minHeight: '350px' }}>
+      <div className="charts-grid" style={{ display: 'grid', gap: '1.5rem', flex: 1, minHeight: '350px' }}>
+        <style jsx>{`
+          .metrics-grid { grid-template-columns: repeat(4, 1fr); }
+          .charts-grid { grid-template-columns: 2fr 1fr; }
+          @media (max-width: 1024px) {
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+            .charts-grid { grid-template-columns: 1fr; }
+          }
+          @media (max-width: 640px) {
+            .metrics-grid { grid-template-columns: 1fr; }
+          }
+        `}</style>
         <div className="glass" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
           <h3 className="heading-2" style={{ fontSize: '1.125rem', marginBottom: '1.5rem' }}>Sales Trend (Last 7 Days)</h3>
           <div style={{ flex: 1 }}>

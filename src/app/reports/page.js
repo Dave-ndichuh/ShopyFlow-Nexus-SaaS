@@ -239,9 +239,18 @@ export default function ReportsPage() {
             <RefreshCcw size={16} />
           </button>
           
-          <button className="btn btn-primary" style={{ padding: '0.5rem 1rem' }} onClick={exportCSV}>
-            <Download size={16} /> Export
+          <button className="btn btn-secondary" onClick={fetchAnalytics} title="Refresh">
+            <RefreshCcw size={16} />
           </button>
+          
+          <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', whiteSpace: 'nowrap' }} onClick={exportCSV}>
+            <Download size={16} /> <span className="hide-on-mobile">Export</span>
+          </button>
+          <style jsx>{`
+            @media (max-width: 640px) {
+              .hide-on-mobile { display: none; }
+            }
+          `}</style>
         </div>
       </div>
 
@@ -250,7 +259,18 @@ export default function ReportsPage() {
       ) : (
         <>
           {/* Metrics Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
+          <div className="reports-grid" style={{ display: 'grid', gap: '1rem' }}>
+            <style jsx>{`
+              .reports-grid { grid-template-columns: repeat(6, 1fr); }
+              .tables-grid { display: flex; gap: 2rem; }
+              @media (max-width: 1024px) {
+                .reports-grid { grid-template-columns: repeat(3, 1fr); }
+                .tables-grid { flex-direction: column; }
+              }
+              @media (max-width: 640px) {
+                .reports-grid { grid-template-columns: 1fr; }
+              }
+            `}</style>
             <div className="glass" style={{ padding: '1.25rem', borderLeft: '3px solid var(--primary)' }}>
               <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Total Sales</div>
               <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>Ksh {(metrics.totalSales/1000).toFixed(1)}k</div>
@@ -304,11 +324,12 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '2rem' }}>
+          <div className="tables-grid">
             {/* Top 10 Performing Products */}
             <div className="glass" style={{ flex: 1, padding: '1.5rem', overflowX: 'auto' }}>
               <h3 className="heading-2" style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Top 10 Products (Revenue)</h3>
-              <table className="table">
+              <div className="table-wrapper">
+                <table className="table">
                 <thead>
                   <tr>
                     <th>Product Name</th>
@@ -332,6 +353,7 @@ export default function ReportsPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Worst Performing Products (Dead Stock) */}
@@ -340,7 +362,8 @@ export default function ReportsPage() {
                 <AlertCircle size={20} color="#ef4444" />
                 <h3 className="heading-2" style={{ fontSize: '1.25rem', margin: 0, color: '#ef4444' }}>Dead Stock (0 Sales, &gt;10 Stock)</h3>
               </div>
-              <table className="table">
+              <div className="table-wrapper">
+                <table className="table">
                 <thead>
                   <tr>
                     <th>Product Name</th>
@@ -367,6 +390,7 @@ export default function ReportsPage() {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
 

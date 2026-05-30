@@ -60,12 +60,14 @@ export default function LoginPage() {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '2rem',
-      background: 'radial-gradient(circle at 50% -20%, var(--background), #020617)'
     }}>
-      <div className="glass animate-fade-in" style={{
+      <style jsx>{`
+        .login-box { padding: 3rem 2.5rem; }
+        @media (max-width: 640px) { .login-box { padding: 2rem 1.5rem; } }
+      `}</style>
+      <div className="glass animate-fade-in login-box" style={{
         width: '100%',
         maxWidth: '420px',
-        padding: '3rem 2.5rem',
         position: 'relative',
         overflow: 'hidden',
         boxShadow: '0 20px 40px -15px rgba(0,0,0,0.5)'

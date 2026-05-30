@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { User, Palette } from 'lucide-react';
+import { User, Palette, Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/context/ThemeContext';
@@ -25,9 +25,26 @@ export default function Topbar() {
     return pathname.charAt(1).toUpperCase() + pathname.slice(2);
   };
 
+  const toggleSidebar = () => {
+    document.body.classList.toggle('sidebar-open');
+  };
+
   return (
     <header className="topbar">
-      <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {/* Hamburger Menu (visible only on small screens) */}
+        <button 
+          onClick={toggleSidebar}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem', color: 'var(--foreground)' }}
+          className="mobile-menu-btn"
+        >
+          <Menu size={20} />
+        </button>
+        <style jsx>{`
+          .mobile-menu-btn { display: none !important; }
+          @media (max-width: 1024px) { .mobile-menu-btn { display: flex !important; } }
+        `}</style>
+
         <h1 className="heading-2" style={{ margin: 0, color: 'var(--foreground)' }}>
           {getTitle()}
         </h1>

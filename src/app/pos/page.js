@@ -223,7 +223,7 @@ export default function POSPage() {
   };
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', gap: '2rem', height: 'calc(100vh - 120px)' }}>
+    <div className="animate-fade-in stack-mobile" style={{ display: 'flex', gap: '2rem', height: 'calc(100vh - 120px)' }}>
       
       {/* Left Area: Categories or Products */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden' }}>
@@ -324,7 +324,11 @@ export default function POSPage() {
       </div>
 
       {/* Right Area: Cart Panel */}
-      <div className="glass" style={{ width: '450px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="glass cart-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <style jsx>{`
+          .cart-panel { width: 450px; }
+          @media (max-width: 1024px) { .cart-panel { width: 100%; max-width: 100%; } }
+        `}</style>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
           <h2 className="heading-2" style={{ margin: 0 }}>Current Sale</h2>
         </div>
@@ -395,7 +399,7 @@ export default function POSPage() {
           </div>
           
           {/* Payment Method Selector */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
+          <div className="btn-group-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
             <button className={`btn ${paymentMethod === 'Cash' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('Cash')} style={{ padding: '0.5rem' }}>Cash</button>
             <button className={`btn ${paymentMethod === 'M-Pesa' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('M-Pesa')} style={{ padding: '0.5rem', backgroundColor: paymentMethod === 'M-Pesa' ? '#25D366' : '' }}>M-Pesa</button>
             <button className={`btn ${paymentMethod === 'Hybrid' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('Hybrid')} style={{ padding: '0.5rem' }}>Hybrid</button>

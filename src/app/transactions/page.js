@@ -75,10 +75,10 @@ export default function TransactionsPage() {
 
   return (
     <div className="animate-fade-in">
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginBottom: '2rem' }}>
         
         {/* ID Filter */}
-        <div style={{ position: 'relative', width: '250px' }}>
+        <div style={{ position: 'relative', flex: '1 1 250px', maxWidth: '100%' }}>
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
           <input 
             type="text" 
@@ -91,7 +91,7 @@ export default function TransactionsPage() {
         </div>
 
         {/* Date Filter */}
-        <div style={{ position: 'relative', width: '250px' }}>
+        <div style={{ position: 'relative', flex: '1 1 250px', maxWidth: '100%' }}>
           <Calendar size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
           <input 
             type="date" 

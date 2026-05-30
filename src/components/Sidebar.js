@@ -57,6 +57,8 @@ export default function Sidebar() {
     navItems = [
       { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
       { name: 'Point of Sale', path: '/pos', icon: ShoppingCart },
+      { name: 'Customers', path: '/customers', icon: Users },
+      { name: 'Transactions', path: '/transactions', icon: FileText },
       { name: 'Services', path: '/services', icon: Wrench },
     ];
   }

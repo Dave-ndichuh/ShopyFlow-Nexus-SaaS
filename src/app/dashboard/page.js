@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ShoppingCart, Wrench, User as UserIcon, LogOut, ArrowRight } from 'lucide-react';
+import { ShoppingCart, Wrench, User as UserIcon, LogOut, ArrowRight, FileText, Activity, DollarSign, CreditCard } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
+  const [metrics, setMetrics] = useState({ todaySales: 0, todayRevenue: 0, pendingCredit: 0 });
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -16,12 +18,47 @@ export default function EmployeeDashboard() {
         router.push('/login');
       } else {
         setUser(user);
+        fetchMetrics();
       }
     });
   }, [router]);
 
+  const fetchMetrics = async () => {
+    setLoading(true);
+    // Get today's bounds in local time
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Fetch Today's Transactions
+    const { data: transData } = await supabase
+      .from('transaction')
+      .select('GRAND_TOTAL, ADJUSTED_TOTAL, IS_CREDIT')
+      .gte('CREATED_AT', startOfDay.toISOString())
+      .lte('CREATED_AT', endOfDay.toISOString());
+
+    if (transData) {
+      const todaySales = transData.length;
+      const todayRevenue = transData.reduce((acc, t) => acc + (t.ADJUSTED_TOTAL || t.GRAND_TOTAL), 0);
+      
+      // All-time pending credit sales count (assuming a credit sale is pending if it's logged, 
+      // in a real app there might be a status, but we will just count all IS_CREDIT=true for now 
+      // or maybe credit sales logged today)
+      // Let's get total all-time credit sales for them to follow up
+      const { count: creditCount } = await supabase
+        .from('transaction')
+        .select('*', { count: 'exact', head: true })
+        .eq('IS_CREDIT', true);
+
+      setMetrics({ todaySales, todayRevenue, pendingCredit: creditCount || 0 });
+    }
+    setLoading(false);
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    document.body.classList.remove('sidebar-open');
     router.push('/login');
   };
 
@@ -30,60 +67,100 @@ export default function EmployeeDashboard() {
   return (
     <div className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
         <div>
-          <h1 className="heading-1" style={{ marginBottom: '0.5rem' }}>Welcome Back!</h1>
-          <p className="text-muted" style={{ fontSize: '1.125rem' }}>Employee Portal: {user.email}</p>
+          <h1 className="heading-1" style={{ marginBottom: '0.5rem' }}>Employee Dashboard</h1>
+          <p className="text-muted" style={{ fontSize: '1.125rem' }}>Welcome back, {user.email}</p>
         </div>
         <button onClick={handleLogout} className="btn btn-secondary" style={{ color: '#ef4444' }}>
           <LogOut size={18} /> Logout
         </button>
       </div>
 
-      <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+      {/* KPI Cards */}
+      <div className="metrics-grid" style={{ display: 'grid', gap: '1.5rem', marginBottom: '3rem' }}>
+        <style jsx>{`
+          .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+          @media (max-width: 1024px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+          @media (max-width: 640px) { .metrics-grid { grid-template-columns: 1fr; } }
+        `}</style>
+        
+        <div className="glass" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)', marginBottom: '0.5rem' }}>
+            <Activity size={18} /> <span style={{ fontWeight: 500 }}>Transactions Today</span>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 700 }}>
+            {loading ? '-' : metrics.todaySales}
+          </div>
+        </div>
+
+        <div className="glass" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)', marginBottom: '0.5rem' }}>
+            <DollarSign size={18} /> <span style={{ fontWeight: 500 }}>Revenue Today</span>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#10b981' }}>
+            {loading ? '-' : `Ksh ${(metrics.todayRevenue / 1000).toFixed(1)}k`}
+          </div>
+        </div>
+
+        <div className="glass" style={{ padding: '1.5rem', borderLeft: '4px solid #f59e0b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)', marginBottom: '0.5rem' }}>
+            <CreditCard size={18} /> <span style={{ fontWeight: 500 }}>Total Credit Sales</span>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#f59e0b' }}>
+            {loading ? '-' : metrics.pendingCredit}
+          </div>
+        </div>
+      </div>
+
+      <h2 className="heading-2" style={{ marginBottom: '1.5rem' }}>Quick Actions</h2>
+      <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
         
         {/* POS Module Card */}
         <Link href="/pos" style={{ textDecoration: 'none' }}>
-          <div className="glass" style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '1rem', transition: 'transform 0.2s', cursor: 'pointer', borderTop: '4px solid var(--primary)' }}>
-            <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '1.5rem', borderRadius: '50%', marginBottom: '1rem' }}>
-              <ShoppingCart size={48} color="var(--primary)" />
+          <div className="glass" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem', transition: 'transform 0.2s', cursor: 'pointer', height: '100%' }}>
+            <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '1rem', borderRadius: '12px', width: 'fit-content' }}>
+              <ShoppingCart size={32} color="var(--primary)" />
             </div>
-            <h2 className="heading-2" style={{ margin: 0 }}>Point of Sale</h2>
-            <p className="text-muted">Process customer checkouts, handle hybrid payments, and log credit sales.</p>
-            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', fontWeight: 600 }}>
-              Launch POS <ArrowRight size={18} />
+            <h3 className="heading-2" style={{ margin: 0, fontSize: '1.25rem' }}>New Sale (POS)</h3>
+            <p className="text-muted" style={{ fontSize: '0.875rem' }}>Process customer checkouts, handle hybrid payments, and log credit sales.</p>
+            <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', fontWeight: 600, fontSize: '0.875rem' }}>
+              Launch POS <ArrowRight size={16} />
+            </div>
+          </div>
+        </Link>
+
+        {/* Transactions Card */}
+        <Link href="/transactions" style={{ textDecoration: 'none' }}>
+          <div className="glass" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem', transition: 'transform 0.2s', cursor: 'pointer', height: '100%' }}>
+            <div style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '1rem', borderRadius: '12px', width: 'fit-content' }}>
+              <FileText size={32} color="#8b5cf6" />
+            </div>
+            <h3 className="heading-2" style={{ margin: 0, fontSize: '1.25rem' }}>Lookup & Receipts</h3>
+            <p className="text-muted" style={{ fontSize: '0.875rem' }}>Search past transactions, view details, and print customer receipts or invoices.</p>
+            <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#8b5cf6', fontWeight: 600, fontSize: '0.875rem' }}>
+              View History <ArrowRight size={16} />
             </div>
           </div>
         </Link>
 
         {/* Services Module Card */}
         <Link href="/services" style={{ textDecoration: 'none' }}>
-          <div className="glass" style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '1rem', transition: 'transform 0.2s', cursor: 'pointer', borderTop: '4px solid #10b981' }}>
-            <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '1.5rem', borderRadius: '50%', marginBottom: '1rem' }}>
-              <Wrench size={48} color="#10b981" />
+          <div className="glass" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem', transition: 'transform 0.2s', cursor: 'pointer', height: '100%' }}>
+            <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '1rem', borderRadius: '12px', width: 'fit-content' }}>
+              <Wrench size={32} color="#10b981" />
             </div>
-            <h2 className="heading-2" style={{ margin: 0 }}>Service Center</h2>
-            <p className="text-muted">Manage active repair tickets, assign inventory parts to services, and update statuses.</p>
-            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', fontWeight: 600 }}>
-              Manage Services <ArrowRight size={18} />
+            <h3 className="heading-2" style={{ margin: 0, fontSize: '1.25rem' }}>Service Center</h3>
+            <p className="text-muted" style={{ fontSize: '0.875rem' }}>Manage active repair tickets, assign inventory parts to services, and update statuses.</p>
+            <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', fontWeight: 600, fontSize: '0.875rem' }}>
+              Manage Services <ArrowRight size={16} />
             </div>
           </div>
         </Link>
-
-        {/* Profile Card */}
-        <div className="glass" style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '1rem', borderTop: '4px solid #8b5cf6' }}>
-          <div style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '1.5rem', borderRadius: '50%', marginBottom: '1rem' }}>
-            <UserIcon size={48} color="#8b5cf6" />
-          </div>
-          <h2 className="heading-2" style={{ margin: 0 }}>My Account</h2>
-          <p className="text-muted">You are currently logged in via secure Magic Link authentication.</p>
-          <div style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius)', fontSize: '0.875rem' }}>
-            Role: <strong>Employee</strong>
-          </div>
-        </div>
 
       </div>
 
     </div>
   );
 }
+

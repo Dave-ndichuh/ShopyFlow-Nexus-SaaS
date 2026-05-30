@@ -41,7 +41,7 @@ export default function AuthGuard({ children }) {
 
       // 3. Route Guard Logic
       if (isEmployee) {
-        const allowedEmployeeRoutes = ['/dashboard', '/pos', '/services', '/login'];
+        const allowedEmployeeRoutes = ['/dashboard', '/pos', '/customers', '/transactions', '/services', '/login'];
         if (!allowedEmployeeRoutes.includes(pathname)) {
           router.push('/dashboard');
           return;

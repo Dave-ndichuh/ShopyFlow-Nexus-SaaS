@@ -38,7 +38,7 @@ export default function POSPage() {
   const fetchData = async () => {
     setLoading(true);
     const [prodRes, catRes, custRes] = await Promise.all([
-      supabase.from('product').select('*').gt('ON_HAND', 0),
+      supabase.from('product').select('*'),
       supabase.from('category').select('*'),
       supabase.from('customer').select('*')
     ]);
@@ -286,12 +286,23 @@ export default function POSPage() {
                   <button 
                     key={product.PRODUCT_ID} 
                     className="glass" 
-                    style={{ padding: '1rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.5rem', transition: 'transform 0.1s' }}
-                    onClick={() => addToCart(product)}
+                    style={{ 
+                      padding: '1rem', 
+                      textAlign: 'left', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '0.5rem', 
+                      transition: 'transform 0.1s',
+                      opacity: product.ON_HAND <= 0 ? 0.5 : 1,
+                      cursor: product.ON_HAND <= 0 ? 'not-allowed' : 'pointer'
+                    }}
+                    onClick={() => product.ON_HAND > 0 ? addToCart(product) : alert('This product is out of stock!')}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                       <span className="badge badge-warning">{product.PRODUCT_CODE}</span>
-                      <span className="text-muted" style={{ fontSize: '0.875rem' }}>Stock: {product.ON_HAND}</span>
+                      <span className={product.ON_HAND <= 0 ? "text-destructive font-bold" : "text-muted"} style={{ fontSize: '0.875rem' }}>
+                        {product.ON_HAND <= 0 ? 'Out of Stock' : `Stock: ${product.ON_HAND}`}
+                      </span>
                     </div>
                     <div>
                       <h4 style={{ fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.25rem' }}>{product.NAME}</h4>

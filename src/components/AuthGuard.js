@@ -16,7 +16,8 @@ export default function AuthGuard({ children }) {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        if (pathname !== '/login') {
+        // Allow unauthenticated access to login pages
+        if (pathname !== '/login' && pathname !== '/employee-login') {
           router.push('/login');
         } else {
           setAuthorized(true);

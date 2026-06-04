@@ -101,6 +101,7 @@ export default function EmployeeLoginPage() {
           background: var(--card);
           box-shadow: -20px 0 40px rgba(0,0,0,0.1);
           z-index: 10;
+          width: 100%;
         }
         .keypad {
           display: grid;
@@ -151,11 +152,6 @@ export default function EmployeeLoginPage() {
           background: #10b981;
           box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
         }
-        @media (max-width: 900px) {
-          .split-layout { flex-direction: column; }
-          .brand-panel { padding: 3rem 2rem; flex: none; text-align: center; }
-          .form-panel { max-width: 100%; padding: 2rem; }
-        }
 
         /* Speedometer/Dashboard Animations */
         .hud-container {
@@ -202,6 +198,95 @@ export default function EmployeeLoginPage() {
         }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
+        
+        /* Logo Enhancement */
+        img[alt="Jobea Auto Logo"] {
+          display: inline-block;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        img[alt="Jobea Auto Logo"]:hover {
+          filter: drop-shadow(0 8px 20px rgba(16, 185, 129, 0.25)) !important;
+          opacity: 1 !important;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+          .brand-panel { padding: 3rem 2rem; }
+          .form-panel { padding: 3rem 2rem; }
+          .hud-container { width: 600px; height: 600px; }
+          h1 { font-size: 2.5rem; }
+        }
+
+        @media (max-width: 768px) {
+          .split-layout { flex-direction: column; }
+          .brand-panel { 
+            padding: 2rem 1.5rem; 
+            flex: none; 
+            text-align: center;
+            min-height: 60vh;
+            justify-content: flex-start;
+            padding-top: 3rem;
+          }
+          .form-panel { 
+            max-width: 100%; 
+            padding: 1.5rem;
+            flex: 1;
+            justify-content: flex-start;
+            padding-top: 2rem;
+          }
+          .hud-container { 
+            width: 400px; 
+            height: 400px;
+            opacity: 0.5;
+          }
+          h1 { font-size: 2rem; }
+          p { font-size: 1rem; }
+          .keypad { grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+          .keypad-btn { height: 56px; font-size: 1.25rem; }
+        }
+
+        @media (max-width: 480px) {
+          .split-layout { min-height: auto; }
+          .brand-panel { 
+            padding: 1.5rem 1rem;
+            min-height: auto;
+            padding-bottom: 1rem;
+          }
+          .form-panel { 
+            padding: 1rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+          }
+          .hud-container { display: none; }
+          h1 { 
+            font-size: 1.5rem; 
+            margin-bottom: 0.5rem;
+          }
+          p { 
+            font-size: 0.875rem;
+            line-height: 1.4;
+          }
+          img { height: 60px; }
+          .keypad { 
+            gap: 0.5rem; 
+            margin: 1.5rem 0;
+          }
+          .keypad-btn { 
+            height: 48px; 
+            font-size: 1.125rem;
+          }
+          .pin-dots { gap: 0.75rem; margin-bottom: 1rem; }
+          .pin-dot { width: 18px; height: 18px; }
+          label { font-size: 0.75rem; }
+          button[type="submit"] { 
+            height: 56px; 
+            font-size: 1rem;
+          }
+          .btn { width: 100%; }
+        }
       `}</style>
 
       {/* Left Brand Panel */}
@@ -213,8 +298,8 @@ export default function EmployeeLoginPage() {
         </div>
         
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ marginBottom: '2rem' }}>
-            <img src="/logo.png" alt="Jobea Auto Logo" style={{ height: '80px', objectFit: 'contain' }} />
+          <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>
+            <img src="/logo.png" alt="Jobea Auto Logo" style={{ height: '76px', objectFit: 'contain', filter: 'drop-shadow(0 6px 16px rgba(16, 185, 129, 0.2))', opacity: 0.95, transition: 'all 0.3s ease', transform: 'translateZ(0)' }} />
           </div>
           <h1 style={{ fontSize: '3.5rem', fontWeight: 800, lineHeight: 1.1, marginBottom: '1rem', letterSpacing: '-0.02em' }}>
             Staff Access<br/>Terminal

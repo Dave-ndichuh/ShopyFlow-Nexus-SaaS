@@ -39,7 +39,7 @@ export default function POSPage() {
     setLoading(true);
     const [prodRes, catRes, custRes] = await Promise.all([
       supabase.from('product').select('*'),
-      supabase.from('category').select('*'),
+      supabase.from('category').select('*').order('CNAME', { ascending: true }),
       supabase.from('customer').select('*')
     ]);
     

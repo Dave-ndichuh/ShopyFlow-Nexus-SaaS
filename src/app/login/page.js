@@ -80,8 +80,10 @@ export default function LoginPage() {
         <div style={{ position: 'absolute', bottom: '-50px', right: '-50px', width: '150px', height: '150px', background: '#f97316', filter: 'blur(60px)', opacity: 0.2, borderRadius: '50%' }} />
 
         <div style={{ textAlign: 'center', marginBottom: '2.5rem', position: 'relative' }}>
-          <img src="/logo.png" alt="Jobea Auto Logo" style={{ height: '80px', objectFit: 'contain', marginBottom: '1rem' }} />
-          <p className="text-muted" style={{ fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.75rem' }}>Admin Portal</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', transition: 'all 0.3s ease' }}>
+            <img src="/logo.png" alt="Jobea Auto Logo" style={{ height: '72px', objectFit: 'contain', filter: 'drop-shadow(0 4px 12px rgba(16, 185, 129, 0.15))', opacity: 0.95, transition: 'all 0.3s ease' }} />
+          </div>
+          <p className="text-muted" style={{ fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.5)' }}>Admin Portal</p>
         </div>
 
         {error && (

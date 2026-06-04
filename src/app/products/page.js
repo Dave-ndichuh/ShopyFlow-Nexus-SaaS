@@ -36,7 +36,7 @@ export default function ProductsPage() {
       setProducts(data);
     }
 
-    const { data: catData } = await supabase.from('category').select('*');
+    const { data: catData } = await supabase.from('category').select('*').order('CNAME', { ascending: true });
     if (catData) setCategories(catData);
 
     const { data: supData } = await supabase.from('supplier').select('*');

@@ -22,12 +22,15 @@ export default function TransactionsPage() {
         .from('transaction')
         .select(`
           *,
-          customer(FIRST_NAME, LAST_NAME),
+          customer!transaction_CUST_ID_fkey(FIRST_NAME, LAST_NAME),
+          credit_customer:customer!transaction_CREDIT_CUSTOMER_ID_fkey(FIRST_NAME, LAST_NAME),
           transaction_details(*, product(NAME))
         `)
         .order('TRANS_ID', { ascending: false });
 
-      if (!error && data) {
+      if (error) {
+        console.error('Transactions fetch error:', error);
+      } else if (data) {
         setTransactions(data);
       }
       setLoading(false);
@@ -143,7 +146,7 @@ export default function TransactionsPage() {
                     <small>{new Date(trans.CREATED_AT).toLocaleTimeString()}</small>
                   </td>
                   <td>
-                    {trans.customer ? `${trans.customer.FIRST_NAME} ${trans.customer.LAST_NAME}` : 'Walk-in'}
+                    {(trans.customer || trans.credit_customer) ? `${(trans.customer || trans.credit_customer).FIRST_NAME} ${(trans.customer || trans.credit_customer).LAST_NAME}` : 'Walk-in'}
                   </td>
                   <td>
                     <span className="badge badge-success">

@@ -6,16 +6,13 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/context/ThemeContext';
 
+import { useAuth } from '@/components/AuthGuard';
+
 export default function Topbar() {
   const pathname = usePathname();
-  const [userEmail, setUserEmail] = useState('');
   const { theme, changeTheme } = useTheme();
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setUserEmail(user.email);
-    });
-  }, []);
+  const { user } = useAuth();
+  const userEmail = user?.email || '';
 
   // Hide topbar on login pages
   if (pathname === '/login' || pathname === '/employee-login') return null;

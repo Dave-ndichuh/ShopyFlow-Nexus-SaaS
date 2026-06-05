@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Edit, Trash2, Search, X, Wrench, Calendar, Settings, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, X, Wrench, Calendar, Settings, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { useAuth } from '@/components/AuthGuard';
 
 export default function ServicesPage() {
   const [services, setServices] = useState([]);
@@ -25,6 +26,16 @@ export default function ServicesPage() {
   const [serviceDetails, setServiceDetails] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [qtyToAdd, setQtyToAdd] = useState(1);
+  const { user, role } = useAuth();
+
+  const currentEmployee = employees.find(e => e.EMAIL?.toLowerCase() === user?.email?.toLowerCase());
+  const pendingAssignments = services.filter(s => s.EMPLOYEE_ID === currentEmployee?.EMPLOYEE_ID && s.STATUS === 'Pending Assignment');
+
+  const updateServiceStatus = async (id, status) => {
+    const { error } = await supabase.from('service').update({ STATUS: status }).eq('SERVICE_ID', id);
+    if (!error) fetchServices();
+    else alert('Error updating status: ' + error.message);
+  };
 
   const fetchServices = async () => {
     setLoading(true);
@@ -71,7 +82,7 @@ export default function ServicesPage() {
         SERVICE_CODE: `SRV-${Math.floor(Math.random() * 10000)}`, 
         CUSTOMER_ID: '', EMPLOYEE_ID: '', SERVICE_TYPE: '', DESCRIPTION: '', 
         DATE_SCHEDULED: new Date().toISOString().split('T')[0], 
-        STATUS: 'Scheduled', PRICE: 0, DURATION: '', NOTES: ''
+        STATUS: 'Pending Assignment', PRICE: 0, DURATION: '', NOTES: ''
       });
       setServiceDetails([]);
     }
@@ -144,6 +155,61 @@ export default function ServicesPage() {
     }
   };
 
+  const processServicePayment = async () => {
+    if (!confirm('This will finalize the service, create a transaction, and prompt the customer for payment. Continue?')) return;
+    
+    const laborPrice = Number(formData.PRICE) || 0;
+    const partsTotal = serviceDetails.reduce((sum, d) => sum + Number(d.SUBTOTAL), 0);
+    const grandTotal = laborPrice + partsTotal;
+
+    const methodStr = prompt('Enter payment method (Cash, M-Pesa, Credit):', 'Cash');
+    if (!methodStr) return;
+
+    let mpesaAmt = 0;
+    let cashAmt = 0;
+    if (methodStr.toLowerCase() === 'm-pesa') mpesaAmt = grandTotal;
+    else cashAmt = grandTotal;
+
+    try {
+      const { data: transData, error: transErr } = await supabase.from('transaction').insert([{
+        SUBTOTAL: grandTotal,
+        TAX_AMOUNT: 0,
+        GRAND_TOTAL: grandTotal,
+        DISCOUNT_AMOUNT: 0,
+        ADJUSTED_TOTAL: grandTotal,
+        PAYMENT_METHOD: methodStr,
+        CASH_AMOUNT: cashAmt,
+        MPESA_AMOUNT: mpesaAmt,
+        HYBRID_PAYMENT: false,
+        IS_CREDIT: methodStr.toLowerCase() === 'credit',
+        CASH_TENDERED: grandTotal
+      }]).select().single();
+
+      if (transErr) throw transErr;
+
+      const details = serviceDetails.map(item => ({
+        TRANS_ID: transData.TRANS_ID,
+        PRODUCT_ID: item.PRODUCT_ID,
+        QTY: item.QTY,
+        UNIT_PRICE: item.UNIT_PRICE,
+        SUBTOTAL: item.SUBTOTAL
+      }));
+
+      if (details.length > 0) {
+        const { error: detErr } = await supabase.from('transaction_details').insert(details);
+        if (detErr) throw detErr;
+      }
+
+      await supabase.from('service').update({ STATUS: 'Completed & Paid', DATE_COMPLETED: new Date().toISOString() }).eq('SERVICE_ID', editingId);
+
+      alert(`Success! Service Paid. Transaction #${transData.TRANS_ID} created.`);
+      setShowModal(false);
+      fetchServices();
+    } catch (err) {
+      alert('Error processing payment: ' + err.message);
+    }
+  };
+
   const removePart = async (detailId) => {
     if (confirm('Remove this part from the ticket?')) {
       await supabase.from('service_details').delete().eq('DETAIL_ID', detailId);
@@ -154,9 +220,12 @@ export default function ServicesPage() {
 
   const getStatusColor = (status) => {
     switch (status) {
+      case 'Pending Assignment': return 'badge-secondary';
       case 'Scheduled': return 'badge-warning';
       case 'In Progress': return 'badge-primary';
       case 'Completed': return 'badge-success';
+      case 'Completed & Paid': return 'badge-success';
+      case 'Declined': return 'badge-destructive';
       case 'Cancelled': return 'badge-destructive';
       default: return 'badge-secondary';
     }
@@ -170,6 +239,28 @@ export default function ServicesPage() {
 
   return (
     <div className="animate-fade-in">
+      {role === 'employee' && pendingAssignments.length > 0 && (
+        <div className="glass" style={{ borderLeft: '4px solid #f59e0b', padding: '1.5rem', marginBottom: '2rem' }}>
+          <h3 className="heading-2" style={{ margin: 0, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <AlertTriangle size={20} /> You have {pendingAssignments.length} new service assignment(s)
+          </h3>
+          <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {pendingAssignments.map(s => (
+              <div key={s.SERVICE_ID} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: 'var(--radius)' }}>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{s.SERVICE_CODE} - {s.SERVICE_TYPE}</div>
+                  <div className="text-muted" style={{ fontSize: '0.875rem' }}>Customer: {s.customer?.FIRST_NAME} {s.customer?.LAST_NAME} | Scheduled: {new Date(s.DATE_SCHEDULED).toLocaleDateString()}</div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className="btn btn-secondary" style={{ borderColor: '#ef4444', color: '#ef4444' }} onClick={() => updateServiceStatus(s.SERVICE_ID, 'Declined')}>Decline</button>
+                  <button className="btn btn-primary" onClick={() => updateServiceStatus(s.SERVICE_ID, 'Scheduled')}>Accept</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div style={{ position: 'relative', width: '300px' }}>
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
@@ -243,8 +334,8 @@ export default function ServicesPage() {
       </div>
 
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '2rem' }}>
-          <div className="glass" style={{ width: '100%', maxWidth: '900px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 9999, padding: '5rem 2rem 2rem 2rem', overflowY: 'auto' }}>
+          <div className="glass" style={{ width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', background: 'var(--background)', marginBottom: '4rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
               <h3 className="heading-2" style={{ margin: 0 }}>{editingId ? 'Edit Service Ticket' : 'Create Service Ticket'}</h3>
               <button onClick={() => setShowModal(false)}><X size={20} className="text-muted" /></button>
@@ -315,9 +406,12 @@ export default function ServicesPage() {
                     <div style={{ flex: 1 }}>
                       <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Status</label>
                       <select className="input" value={formData.STATUS} onChange={e => setFormData({...formData, STATUS: e.target.value})} style={{ background: 'var(--card)' }}>
+                        <option value="Pending Assignment">Pending Assignment</option>
                         <option value="Scheduled">Scheduled</option>
                         <option value="In Progress">In Progress</option>
                         <option value="Completed">Completed</option>
+                        <option value="Completed & Paid">Completed & Paid</option>
+                        <option value="Declined">Declined</option>
                         <option value="Cancelled">Cancelled</option>
                       </select>
                     </div>
@@ -407,6 +501,11 @@ export default function ServicesPage() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1.5rem', borderTop: '1px solid var(--border)' }}>
+              {formData.STATUS === 'Completed' && editingId && (
+                <button type="button" className="btn btn-primary" style={{ background: '#10b981', marginRight: 'auto' }} onClick={processServicePayment}>
+                  <CheckCircle size={18} style={{ marginRight: '0.5rem' }} /> Checkout & Process Payment
+                </button>
+              )}
               <button type="button" className="btn btn-secondary" style={{ marginRight: '1rem' }} onClick={() => setShowModal(false)}>Cancel</button>
               <button type="submit" form="serviceForm" className="btn btn-primary" style={{ padding: '0.75rem 2.5rem' }}>Save Ticket</button>
             </div>

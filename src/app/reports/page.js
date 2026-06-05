@@ -54,8 +54,9 @@ export default function ReportsPage() {
     if (!startDate || !endDate) return;
     setLoading(true);
     
-    const endDateTime = `${endDate}T23:59:59.999Z`;
-    const startDateTime = `${startDate}T00:00:00.000Z`;
+    // Convert local bounds to UTC for accurate Supabase querying
+    const startDateTime = new Date(`${startDate}T00:00:00`).toISOString();
+    const endDateTime = new Date(`${endDate}T23:59:59.999`).toISOString();
 
     // 1. Fetch Transactions
     const { data: transData } = await supabase

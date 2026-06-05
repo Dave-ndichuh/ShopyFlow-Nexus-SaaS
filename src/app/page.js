@@ -83,13 +83,14 @@ export default function Dashboard() {
         let creditTotal = 0;
 
         // For Sales Trend Line Chart (Last 7 Days)
-        // Initialize last 7 days map
         const trendMap = {};
         for(let i=0; i<7; i++) {
           const d = new Date(sevenDaysAgo);
           d.setDate(d.getDate() + i);
-          const dateStr = d.toISOString().split('T')[0];
-          trendMap[dateStr] = 0;
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          trendMap[`${yyyy}-${mm}-${dd}`] = 0;
         }
 
         if (currentMonthTrans) {
@@ -99,7 +100,9 @@ export default function Dashboard() {
             tSales += saleTotal;
 
             // Trend Chart
-            const tDate = t.CREATED_AT.split('T')[0];
+            const tD = new Date(t.CREATED_AT);
+            const tDate = `${tD.getFullYear()}-${String(tD.getMonth() + 1).padStart(2, '0')}-${String(tD.getDate()).padStart(2, '0')}`;
+            
             if (trendMap[tDate] !== undefined) {
               trendMap[tDate] += saleTotal;
             }

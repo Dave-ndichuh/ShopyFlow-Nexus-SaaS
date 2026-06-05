@@ -1,69 +1,68 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-export default function AuthGuard({ children }) {
+const AuthContext = createContext({ user: null, role: null, loading: true });
+
+export const useAuth = () => useContext(AuthContext);
+
+export default function AuthProvider({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
 
   useEffect(() => {
     const checkAuth = async () => {
-      // 1. Is user logged in?
+      setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        // Allow unauthenticated access to login pages
+        setUser(null);
+        setRole(null);
         if (pathname !== '/login' && pathname !== '/employee-login') {
           router.push('/login');
         } else {
           setAuthorized(true);
-          setLoading(false);
         }
+        setLoading(false);
         return;
       }
 
-      // 2. Determine Role
-      // Admin bypasses checks. For this implementation, we check if the email exists in `employee` table.
-      // If it exists, they are restricted to employee routes.
+      setUser(user);
+
       const { data: empData, error: empError } = await supabase
         .from('employee')
         .select('EMAIL')
         .ilike('EMAIL', user.email)
         .maybeSingle();
 
-      if (empError) {
-        console.error('Error fetching employee status:', empError);
-      }
-
       const isEmployee = !!empData;
-      
-      // Store role locally for Sidebar UI
-      localStorage.setItem('user-role', isEmployee ? 'employee' : 'admin');
+      const currentRole = isEmployee ? 'employee' : 'admin';
+      setRole(currentRole);
 
-      // 3. Route Guard Logic
       if (isEmployee) {
-        const allowedEmployeeRoutes = ['/dashboard', '/pos', '/customers', '/transactions', '/services', '/login'];
+        const allowedEmployeeRoutes = ['/pos', '/customers', '/transactions', '/services', '/login', '/employee-login'];
         if (!allowedEmployeeRoutes.includes(pathname)) {
-          router.push('/dashboard');
+          router.push('/pos');
           return;
         }
       }
 
-      // Allow access
       setAuthorized(true);
       setLoading(false);
     };
 
     checkAuth();
 
-    // Supabase Auth Listener for logout
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
-        localStorage.removeItem('user-role');
+        setUser(null);
+        setRole(null);
         router.push('/login');
       }
     });
@@ -77,7 +76,11 @@ export default function AuthGuard({ children }) {
     return <div style={{ minHeight: '100vh', background: 'var(--background)' }} />;
   }
 
-  if (!authorized && pathname !== '/login') return null;
+  if (!authorized && pathname !== '/login' && pathname !== '/employee-login') return null;
 
-  return <>{children}</>;
+  return (
+    <AuthContext.Provider value={{ user, role, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }

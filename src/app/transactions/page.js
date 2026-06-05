@@ -44,8 +44,8 @@ export default function TransactionsPage() {
     }
     
     if (searchDate) {
-      // t.CREATED_AT format: "2026-05-30T..."
-      const tDate = t.CREATED_AT?.split('T')[0];
+      const d = new Date(t.CREATED_AT);
+      const tDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       matchesDate = tDate === searchDate;
     }
 

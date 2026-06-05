@@ -18,15 +18,12 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { useAuth } from '@/components/AuthGuard';
+
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [role, setRole] = useState('admin');
-
-  useEffect(() => {
-    const savedRole = localStorage.getItem('user-role');
-    if (savedRole) setRole(savedRole);
-  }, [pathname]);
+  const { role } = useAuth();
 
   // Hide sidebar on login pages
   if (pathname === '/login' || pathname === '/employee-login') return null;
@@ -55,7 +52,6 @@ export default function Sidebar() {
 
   if (role === 'employee') {
     navItems = [
-      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
       { name: 'Point of Sale', path: '/pos', icon: ShoppingCart },
       { name: 'Customers', path: '/customers', icon: Users },
       { name: 'Transactions', path: '/transactions', icon: FileText },

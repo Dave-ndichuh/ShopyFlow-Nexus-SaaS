@@ -301,7 +301,7 @@ export default function ReportsPage() {
           {/* Visual Analytics */}
           <div className="glass" style={{ padding: '1.5rem' }}>
             <h3 className="heading-2" style={{ fontSize: '1.125rem', marginBottom: '1.5rem' }}>Revenue by Category (Top 10)</h3>
-            <div style={{ height: '300px' }}>
+            <div className="chart-container" style={{ height: '300px' }}>
               {categoryData.length === 0 ? (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted-foreground)' }}>No Data</div>
               ) : (

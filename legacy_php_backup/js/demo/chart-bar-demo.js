@@ -28,8 +28,18 @@ function number_format(number, decimals, dec_point, thousands_sep) {
 }
 
 // Bar Chart Example
-var ctx = document.getElementById("myBarChart");
-var myBarChart = new Chart(ctx, {
+var canvas = document.getElementById("myBarChart");
+if (canvas) {
+  try {
+    var parent = canvas.parentElement;
+    if (parent && parseFloat(getComputedStyle(parent).height) === 0) {
+      parent.style.minHeight = '300px';
+    }
+  } catch (e) {}
+  canvas.style.width = '100%';
+  if (!canvas.style.height) canvas.style.height = '300px';
+  var ctx = canvas;
+  var myBarChart = new Chart(ctx, {
   type: 'bar',
   data: {
     labels: ["January", "February", "March", "April", "May", "June"],

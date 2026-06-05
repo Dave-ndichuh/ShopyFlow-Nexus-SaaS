@@ -446,3 +446,12 @@ button {
     width: 100%;
   }
 }
+
+/* Chart utilities: ensure chart containers have a measurable size for responsive charts */
+.chart-container {
+  width: 100%;
+  height: 100%;
+  min-height: 200px; /* give charts a reasonable default height */
+  min-width: 0; /* allow shrinking inside flex containers */
+  position: relative;
+}

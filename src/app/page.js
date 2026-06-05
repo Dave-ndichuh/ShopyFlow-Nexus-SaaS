@@ -254,7 +254,7 @@ export default function Dashboard() {
         `}</style>
         <div className="glass" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
           <h3 className="heading-2" style={{ fontSize: '1.125rem', marginBottom: '1.5rem' }}>Sales Trend (Last 7 Days)</h3>
-          <div style={{ flex: 1 }}>
+          <div className="chart-container" style={{ flex: 1 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={salesTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -273,7 +273,7 @@ export default function Dashboard() {
 
         <div className="glass" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
           <h3 className="heading-2" style={{ fontSize: '1.125rem', marginBottom: '1.5rem' }}>Revenue by Payment Method</h3>
-          <div style={{ flex: 1 }}>
+          <div className="chart-container" style={{ flex: 1 }}>
             {paymentData.length === 0 ? (
               <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted-foreground)' }}>No Data</div>
             ) : (

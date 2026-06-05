@@ -28,8 +28,18 @@ function number_format(number, decimals, dec_point, thousands_sep) {
 }
 
 // Area Chart Example
-var ctx = document.getElementById("myAreaChart");
-var myLineChart = new Chart(ctx, {
+var canvas = document.getElementById("myAreaChart");
+if (canvas) {
+  try {
+    var parent = canvas.parentElement;
+    if (parent && parseFloat(getComputedStyle(parent).height) === 0) {
+      parent.style.minHeight = '300px';
+    }
+  } catch (e) {}
+  canvas.style.width = '100%';
+  if (!canvas.style.height) canvas.style.height = '300px';
+  var ctx = canvas;
+  var myLineChart = new Chart(ctx, {
   type: 'line',
   data: {
     labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],

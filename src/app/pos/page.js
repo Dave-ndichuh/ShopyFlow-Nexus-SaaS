@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Search, Plus, Minus, Trash2, CreditCard, Loader2, ShoppingCart, Smartphone, ArrowLeft, Tag, Layers, User as UserIcon, Calendar } from 'lucide-react';
 import Receipt from '@/components/Receipt';
+import { useAuth } from '@/components/AuthGuard';
 
 export default function POSPage() {
   const [products, setProducts] = useState([]);
@@ -34,6 +35,7 @@ export default function POSPage() {
   const [discountAmount, setDiscountAmount] = useState(''); // positive is discount, negative is surcharge
   
   const [lastTransaction, setLastTransaction] = useState(null);
+  const { employeeId } = useAuth();
 
   const fetchData = async () => {
     setLoading(true);
@@ -179,7 +181,8 @@ export default function POSPage() {
         CREDIT_DUE_DATE: isCredit ? creditDueDate : null,
         CREDIT_TERMS: isCredit ? creditTerms : null,
         
-        CASH_TENDERED: isCredit ? 0 : grandTotal // simple assumption
+        CASH_TENDERED: isCredit ? 0 : grandTotal,
+        EMPLOYEE_ID: employeeId
       }]).select().single();
 
       if (transErr) throw transErr;

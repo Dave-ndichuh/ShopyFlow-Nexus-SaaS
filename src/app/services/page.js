@@ -26,10 +26,9 @@ export default function ServicesPage() {
   const [serviceDetails, setServiceDetails] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [qtyToAdd, setQtyToAdd] = useState(1);
-  const { user, role } = useAuth();
+  const { user, role, employeeId } = useAuth();
 
-  const currentEmployee = employees.find(e => e.EMAIL?.toLowerCase() === user?.email?.toLowerCase());
-  const pendingAssignments = services.filter(s => s.EMPLOYEE_ID === currentEmployee?.EMPLOYEE_ID && s.STATUS === 'Pending Assignment');
+  const pendingAssignments = services.filter(s => s.EMPLOYEE_ID === employeeId && s.STATUS === 'Pending Assignment');
 
   const updateServiceStatus = async (id, status) => {
     const { error } = await supabase.from('service').update({ STATUS: status }).eq('SERVICE_ID', id);
@@ -182,7 +181,8 @@ export default function ServicesPage() {
         MPESA_AMOUNT: mpesaAmt,
         HYBRID_PAYMENT: false,
         IS_CREDIT: methodStr.toLowerCase() === 'credit',
-        CASH_TENDERED: grandTotal
+        CASH_TENDERED: grandTotal,
+        EMPLOYEE_ID: employeeId
       }]).select().single();
 
       if (transErr) throw transErr;

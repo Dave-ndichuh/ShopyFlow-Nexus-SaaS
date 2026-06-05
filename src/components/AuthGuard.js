@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-const AuthContext = createContext({ user: null, role: null, loading: true });
+const AuthContext = createContext({ user: null, role: null, employeeId: null, loading: true });
 
 export const useAuth = () => useContext(AuthContext);
 
@@ -15,6 +15,7 @@ export default function AuthProvider({ children }) {
   const [authorized, setAuthorized] = useState(false);
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  const [employeeId, setEmployeeId] = useState(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -24,6 +25,7 @@ export default function AuthProvider({ children }) {
       if (!user) {
         setUser(null);
         setRole(null);
+        setEmployeeId(null);
         if (pathname !== '/login' && pathname !== '/employee-login') {
           router.push('/login');
         } else {
@@ -37,13 +39,14 @@ export default function AuthProvider({ children }) {
 
       const { data: empData, error: empError } = await supabase
         .from('employee')
-        .select('EMAIL')
+        .select('EMAIL, EMPLOYEE_ID')
         .ilike('EMAIL', user.email)
         .maybeSingle();
 
       const isEmployee = !!empData;
       const currentRole = isEmployee ? 'employee' : 'admin';
       setRole(currentRole);
+      setEmployeeId(empData?.EMPLOYEE_ID || null);
 
       if (isEmployee) {
         const allowedEmployeeRoutes = ['/pos', '/customers', '/transactions', '/services', '/login', '/employee-login'];
@@ -63,6 +66,7 @@ export default function AuthProvider({ children }) {
       if (event === 'SIGNED_OUT') {
         setUser(null);
         setRole(null);
+        setEmployeeId(null);
         router.push('/login');
       }
     });
@@ -79,7 +83,7 @@ export default function AuthProvider({ children }) {
   if (!authorized && pathname !== '/login' && pathname !== '/employee-login') return null;
 
   return (
-    <AuthContext.Provider value={{ user, role, loading }}>
+    <AuthContext.Provider value={{ user, role, employeeId, loading }}>
       {children}
     </AuthContext.Provider>
   );

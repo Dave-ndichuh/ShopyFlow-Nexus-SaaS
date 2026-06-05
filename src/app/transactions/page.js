@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Search, Printer, Calendar } from 'lucide-react';
 import Receipt from '@/components/Receipt';
+import { useAuth } from '@/components/AuthGuard';
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState([]);
@@ -15,10 +16,12 @@ export default function TransactionsPage() {
   
   // Print State
   const [printData, setPrintData] = useState(null);
+  
+  const { role, employeeId } = useAuth();
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('transaction')
         .select(`
           *,
@@ -28,6 +31,12 @@ export default function TransactionsPage() {
         `)
         .order('TRANS_ID', { ascending: false });
 
+      if (role === 'employee' && employeeId) {
+        query = query.eq('EMPLOYEE_ID', employeeId);
+      }
+      
+      const { data, error } = await query;
+
       if (error) {
         console.error('Transactions fetch error:', error);
       } else if (data) {
@@ -36,7 +45,7 @@ export default function TransactionsPage() {
       setLoading(false);
     };
     fetchTransactions();
-  }, []);
+  }, [role, employeeId]);
 
   const filteredTransactions = transactions.filter(t => {
     let matchesId = true;

@@ -1,10 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
-import { Search, Plus, Minus, Trash2, CreditCard, Loader2, ShoppingCart, Smartphone, ArrowLeft, Tag, Layers, User as UserIcon, Calendar } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, CreditCard, Loader2, ShoppingCart, Smartphone, ArrowLeft, Tag, Layers, User as UserIcon, Calendar, X, ChevronDown, ShoppingBag } from 'lucide-react';
 import Receipt from '@/components/Receipt';
 import { useAuth } from '@/components/AuthGuard';
+
+const categoryGradients = [
+  'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', // Blue
+  'linear-gradient(135deg, #10b981 0%, #059669 100%)', // Emerald
+  'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', // Amber
+  'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', // Violet
+  'linear-gradient(135deg, #ec4899 0%, #db2777 100%)', // Pink
+  'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', // Cyan
+  'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', // Red
+  'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', // Indigo
+];
+
+const getCategoryGradient = (name) => {
+  if (!name) return categoryGradients[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return categoryGradients[Math.abs(hash) % categoryGradients.length];
+};
 
 export default function POSPage() {
   const [products, setProducts] = useState([]);
@@ -17,6 +36,8 @@ export default function POSPage() {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState('Cash'); // Cash, M-Pesa, Hybrid, Credit
@@ -36,15 +57,31 @@ export default function POSPage() {
   
   const [lastTransaction, setLastTransaction] = useState(null);
   const { employeeId } = useAuth();
+  
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 1024);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
+    setFetchError(null);
     const [prodRes, catRes, custRes] = await Promise.all([
       supabase.from('product').select('*'),
       supabase.from('category').select('*').order('CNAME', { ascending: true }),
       supabase.from('customer').select('*')
     ]);
     
+    if (prodRes.error || catRes.error || custRes.error) {
+      const errorMessage = prodRes.error?.message || catRes.error?.message || custRes.error?.message || 'Unable to load POS data';
+      console.error('POS fetch error:', prodRes.error || catRes.error || custRes.error);
+      setFetchError(errorMessage);
+    }
+
     if (prodRes.data) setProducts(prodRes.data);
     if (catRes.data) setCategories(catRes.data);
     if (custRes.data) setCustomers(custRes.data);
@@ -59,7 +96,10 @@ export default function POSPage() {
   const getFilteredProducts = () => {
     let filtered = products;
     if (selectedCategory) {
-      filtered = filtered.filter(p => String(p.CATEGORY_ID) === String(selectedCategory.CATEGORY_ID));
+      const matchingCategoryIds = categories
+        .filter(c => c.CNAME?.trim().toLowerCase() === selectedCategory.CNAME?.trim().toLowerCase())
+        .map(c => String(c.CATEGORY_ID));
+      filtered = filtered.filter(p => matchingCategoryIds.includes(String(p.CATEGORY_ID)));
     }
     if (searchTerm) {
       filtered = filtered.filter(p => 
@@ -68,6 +108,146 @@ export default function POSPage() {
       );
     }
     return filtered;
+  };
+
+  const renderPOSContent = () => {
+    if (loading) {
+      return <p>Loading catalog...</p>;
+    }
+
+    if (fetchError) {
+      return (
+        <div style={{ padding: '1rem', color: 'var(--destructive)' }}>
+          Unable to load POS items: {fetchError}
+        </div>
+      );
+    }
+
+    if (!selectedCategory && !searchTerm) {
+      if (categories.length === 0) {
+        return (
+          <div style={{ padding: '1.5rem', color: 'var(--muted-foreground)' }}>
+            No categories available. Add categories in Products to start selling.
+          </div>
+        );
+      }
+
+      const uniqueCategories = [];
+      const seenNames = new Set();
+      categories.forEach(cat => {
+        const name = cat.CNAME?.trim().toLowerCase();
+        if (name && !seenNames.has(name)) {
+          seenNames.add(name);
+          uniqueCategories.push(cat);
+        }
+      });
+
+      return (
+        <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+          {uniqueCategories.map(cat => {
+            const matchingCategoryIds = categories
+              .filter(c => c.CNAME?.trim().toLowerCase() === cat.CNAME?.trim().toLowerCase())
+              .map(c => String(c.CATEGORY_ID));
+            const itemCount = products.filter(p => matchingCategoryIds.includes(String(p.CATEGORY_ID))).length;
+
+            return (
+              <motion.button
+                whileHover={{ scale: 1.02, y: -4 }}
+                whileTap={{ scale: 0.98 }}
+                key={cat.CATEGORY_ID}
+                style={{ 
+                  padding: '2rem 1.5rem', 
+                  textAlign: 'center', 
+                  background: getCategoryGradient(cat.CNAME),
+                  borderRadius: '16px',
+                  color: 'white',
+                  border: 'none',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  minHeight: '140px',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setSelectedCategory(cat)}
+              >
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(255,255,255,0.1), transparent)', pointerEvents: 'none' }} />
+                
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, letterSpacing: '0.025em', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                  {cat.CNAME}
+                </h3>
+                
+                <div style={{ 
+                  marginTop: '0.75rem', 
+                  background: 'rgba(0,0,0,0.2)', 
+                  padding: '0.25rem 0.75rem', 
+                  borderRadius: '99px', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 600,
+                  backdropFilter: 'blur(4px)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                  {itemCount} items
+                </div>
+              </motion.button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        {selectedCategory && !searchTerm && (
+          <h3 className="heading-2" style={{ marginBottom: '1.5rem', color: 'var(--primary)' }}>
+            {selectedCategory.CNAME}
+          </h3>
+        )}
+        <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+          {getFilteredProducts().map(product => (
+            <button
+              key={product.PRODUCT_ID}
+              className="glass"
+              style={{
+                padding: '1rem',
+                textAlign: 'left',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                transition: 'transform 0.1s',
+                opacity: product.ON_HAND <= 0 ? 0.5 : 1,
+                cursor: product.ON_HAND <= 0 ? 'not-allowed' : 'pointer'
+              }}
+              onClick={() => product.ON_HAND > 0 ? addToCart(product) : alert('This product is out of stock!')}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                <span className="badge badge-warning">{product.PRODUCT_CODE}</span>
+                <span className={product.ON_HAND <= 0 ? "text-destructive font-bold" : "text-muted"} style={{ fontSize: '0.875rem' }}>
+                  {product.ON_HAND <= 0 ? 'Out of Stock' : `Stock: ${product.ON_HAND}`}
+                </span>
+              </div>
+              <div>
+                <h4 style={{ fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.25rem' }}>{product.NAME}</h4>
+                {(product.BRAND || product.MODEL) && (
+                  <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
+                    {product.BRAND} {product.MODEL}
+                  </p>
+                )}
+              </div>
+              <p style={{ color: 'var(--primary)', fontWeight: 700, marginTop: 'auto' }}>Ksh. {product.PRICE?.toLocaleString()}</p>
+            </button>
+          ))}
+          {getFilteredProducts().length === 0 && (
+            <div style={{ padding: '1rem', color: 'var(--muted-foreground)' }}>
+              No products found. Try a different search or select another category.
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   const addToCart = (product) => {
@@ -215,6 +395,7 @@ export default function POSPage() {
         setCreditTerms('');
         setDiscountAmount('');
         setSelectedCategory(null);
+        setIsMobileCartOpen(false);
       }, 500);
 
       fetchData();
@@ -226,10 +407,19 @@ export default function POSPage() {
   };
 
   return (
-    <div className="animate-fade-in stack-mobile" style={{ display: 'flex', gap: '2rem', height: 'calc(100vh - 120px)' }}>
+    <div className="animate-fade-in pos-wrapper">
       
       {/* Left Area: Categories or Products */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden' }}>
+      <motion.div 
+        className="left-panel"
+        animate={isMobile ? { 
+          scale: isMobileCartOpen ? 0.95 : 1,
+          opacity: isMobileCartOpen ? 0.5 : 1,
+          y: isMobileCartOpen ? -10 : 0
+        } : { scale: 1, opacity: 1, y: 0 }}
+        transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+        style={{ transformOrigin: 'top' }}
+      >
         
         {/* Header Bar */}
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -257,80 +447,119 @@ export default function POSPage() {
         </div>
 
         {/* Content Grid */}
-        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
-          {loading ? (
-            <p>Loading catalog...</p>
-          ) : !selectedCategory && !searchTerm ? (
-            // Show Categories
-            <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-              {categories.map(cat => (
-                <button 
-                  key={cat.CATEGORY_ID} 
-                  className="glass"
-                  style={{ padding: '2rem 1rem', textAlign: 'center', transition: 'all 0.2s', borderBottom: '4px solid var(--primary)' }}
-                  onClick={() => setSelectedCategory(cat)}
-                >
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>{cat.CNAME}</h3>
-                  <p className="text-muted" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>View parts</p>
-                </button>
-              ))}
-            </div>
-          ) : (
-            // Show Products
-            <div>
-              {selectedCategory && !searchTerm && (
-                <h3 className="heading-2" style={{ marginBottom: '1.5rem', color: 'var(--primary)' }}>
-                  {selectedCategory.CNAME}
-                </h3>
-              )}
-              <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-                {getFilteredProducts().map(product => (
-                  <button 
-                    key={product.PRODUCT_ID} 
-                    className="glass" 
-                    style={{ 
-                      padding: '1rem', 
-                      textAlign: 'left', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '0.5rem', 
-                      transition: 'transform 0.1s',
-                      opacity: product.ON_HAND <= 0 ? 0.5 : 1,
-                      cursor: product.ON_HAND <= 0 ? 'not-allowed' : 'pointer'
-                    }}
-                    onClick={() => product.ON_HAND > 0 ? addToCart(product) : alert('This product is out of stock!')}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                      <span className="badge badge-warning">{product.PRODUCT_CODE}</span>
-                      <span className={product.ON_HAND <= 0 ? "text-destructive font-bold" : "text-muted"} style={{ fontSize: '0.875rem' }}>
-                        {product.ON_HAND <= 0 ? 'Out of Stock' : `Stock: ${product.ON_HAND}`}
-                      </span>
-                    </div>
-                    <div>
-                      <h4 style={{ fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.25rem' }}>{product.NAME}</h4>
-                      {(product.BRAND || product.MODEL) && (
-                        <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
-                          {product.BRAND} {product.MODEL}
-                        </p>
-                      )}
-                    </div>
-                    <p style={{ color: 'var(--primary)', fontWeight: 700, marginTop: 'auto' }}>Ksh. {product.PRICE?.toLocaleString()}</p>
-                  </button>
-                ))}
-                {getFilteredProducts().length === 0 && (
-                  <p className="text-muted">No products found.</p>
-                )}
-              </div>
-            </div>
-          )}
+        <div className="left-content">
+          {renderPOSContent()}
         </div>
-      </div>
+      </motion.div>
 
       {/* Right Area: Cart Panel */}
-      <div className="glass cart-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <style jsx>{`
-          .cart-panel { width: 450px; }
-          @media (max-width: 1024px) { .cart-panel { width: 100%; max-width: 100%; } }
+      <AnimatePresence>
+        {(!isMobile || isMobileCartOpen) && (
+          <motion.div 
+            className="glass cart-panel" 
+            style={{ display: 'flex', flexDirection: 'column' }}
+            initial={isMobile ? { y: "100%" } : false}
+            animate={isMobile ? { y: 0 } : false}
+            exit={isMobile ? { y: "100%" } : false}
+            transition={{ type: "spring", damping: 25, stiffness: 200, mass: 0.8 }}
+          >
+            {/* Mobile Close Button */}
+            <div className="mobile-close-btn" onClick={() => setIsMobileCartOpen(false)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--foreground)' }}>
+                <ChevronDown size={24} /> 
+                <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>Back to Catalog</span>
+              </div>
+              <span style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--foreground)' }}>Cart</span>
+            </div>
+            <style jsx>{`
+          .pos-wrapper {
+            display: flex;
+            gap: 2rem;
+            height: calc(100vh - 120px);
+            position: relative;
+          }
+          .left-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            overflow: hidden;
+            min-width: 0;
+          }
+          .left-content {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+          }
+          .cart-panel { 
+            flex: 0 0 450px; 
+            max-width: 100%; 
+            overflow: hidden;
+          }
+          .mobile-close-btn { display: none; }
+          .mobile-cart-fab { display: none; }
+          
+          @media (max-width: 1024px) { 
+            .pos-wrapper {
+              display: block; /* Switch off flex to allow absolute positioning of drawer */
+            }
+            .left-panel {
+              height: calc(100vh - 120px);
+              padding-bottom: 80px; /* Space for FAB */
+            }
+            .cart-panel { 
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              width: 100vw; 
+              height: 100vh;
+              background: var(--background); /* Solid to cover catalog */
+              border-radius: 24px 24px 0 0; /* Rounded top corners like a nice app drawer */
+              z-index: 9999;
+              box-shadow: 0 -10px 40px rgba(0,0,0,0.3);
+              border: 1px solid var(--border);
+            }
+            .mobile-close-btn {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 1rem 1.5rem;
+              background: rgba(15, 23, 42, 0.8);
+              backdrop-filter: blur(12px);
+              -webkit-backdrop-filter: blur(12px);
+              border-bottom: 1px solid var(--border);
+              cursor: pointer;
+              border-radius: 24px 24px 0 0;
+              position: sticky;
+              top: 0;
+              z-index: 10;
+            }
+            .mobile-close-btn:active {
+              background: rgba(15, 23, 42, 0.95);
+            }
+            .mobile-cart-fab {
+              display: flex;
+              position: fixed;
+              bottom: 1.5rem;
+              left: 1.5rem;
+              right: 1.5rem;
+              background: var(--primary);
+              color: white;
+              padding: 1rem 1.5rem;
+              border-radius: 99px;
+              box-shadow: 0 10px 25px rgba(59, 130, 246, 0.5);
+              align-items: center;
+              justify-content: space-between;
+              z-index: 90;
+              cursor: pointer;
+              transition: transform 0.2s;
+            }
+            .mobile-cart-fab:active {
+              transform: scale(0.98);
+            }
+          }
         `}</style>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
           <h2 className="heading-2" style={{ margin: 0 }}>Current Sale</h2>
@@ -480,7 +709,36 @@ export default function POSPage() {
             {checkingOut ? 'Processing...' : paymentMethod === 'Credit' ? 'Log Credit Sale' : `Pay Ksh. ${grandTotal.toLocaleString()}`}
           </button>
         </div>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Bottom Bar (Mobile Only) */}
+      <AnimatePresence>
+        {isMobile && !isMobileCartOpen && cart.length > 0 && (
+          <motion.div 
+            className="mobile-cart-fab animate-fade-in" 
+            onClick={() => setIsMobileCartOpen(true)}
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ShoppingBag size={18} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span style={{ fontWeight: 600, fontSize: '1.125rem', lineHeight: '1.2' }}>View Cart</span>
+                <span style={{ fontSize: '0.875rem', opacity: 0.9 }}>{cart.reduce((sum, item) => sum + item.quantity, 0)} items</span>
+              </div>
+            </div>
+            <div style={{ fontWeight: 700, fontSize: '1.25rem', letterSpacing: '0.025em' }}>
+              Ksh. {grandTotal.toLocaleString()}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Hidden Receipt for Printing */}
       <Receipt 

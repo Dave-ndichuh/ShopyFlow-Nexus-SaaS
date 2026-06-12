@@ -148,7 +148,8 @@ export default function POSPage() {
             const matchingCategoryIds = categories
               .filter(c => c.CNAME?.trim().toLowerCase() === cat.CNAME?.trim().toLowerCase())
               .map(c => String(c.CATEGORY_ID));
-            const itemCount = products.filter(p => matchingCategoryIds.includes(String(p.CATEGORY_ID))).length;
+            const categoryProducts = products.filter(p => matchingCategoryIds.includes(String(p.CATEGORY_ID)));
+            const itemCount = categoryProducts.reduce((sum, p) => sum + (Number(p.ON_HAND) || 0), 0);
 
             return (
               <motion.button

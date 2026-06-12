@@ -640,7 +640,7 @@ export default function POSPage() {
 
           {/* Conditional Inputs based on Method */}
           {paymentMethod === 'M-Pesa' && (
-            <input type="text" className="input" placeholder="M-Pesa Receipt No. (Optional)" style={{ marginBottom: '1rem', border: '1px solid #25D366' }} value={mpesaReceipt} onChange={(e) => setMpesaReceipt(e.target.value)} />
+            <input type="text" className="input" placeholder="M-Pesa Transaction Code" style={{ marginBottom: '1rem', border: '1px solid #25D366' }} value={mpesaReceipt} onChange={(e) => setMpesaReceipt(e.target.value)} />
           )}
 
           {paymentMethod === 'Hybrid' && (
@@ -673,7 +673,7 @@ export default function POSPage() {
           )}
 
           {(paymentMethod === 'Hybrid' && Number(hybridMpesa) > 0) && (
-            <input type="text" className="input" placeholder="M-Pesa Receipt No. (Optional)" style={{ marginBottom: '1rem', border: '1px solid #25D366' }} value={mpesaReceipt} onChange={(e) => setMpesaReceipt(e.target.value)} />
+            <input type="text" className="input" placeholder="M-Pesa Transaction Code" style={{ marginBottom: '1rem', border: '1px solid #25D366' }} value={mpesaReceipt} onChange={(e) => setMpesaReceipt(e.target.value)} />
           )}
 
           <button 

@@ -34,18 +34,19 @@ export default function EmployeeLoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data: empData, error: dbError } = await supabase
-        .from('employee')
-        .select('EMAIL')
-        .ilike('USERNAME', username.trim())
-        .maybeSingle();
+      const res = await fetch('/api/auth/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+      const data = await res.json();
 
-      if (dbError || !empData) {
-        throw new Error('Invalid Username or PIN.');
+      if (!res.ok || !data.email) {
+        throw new Error(data.error || 'Invalid Username or PIN.');
       }
 
       const { error: authError } = await supabase.auth.signInWithPassword({
-        email: empData.EMAIL,
+        email: data.email,
         password: pin,
       });
 

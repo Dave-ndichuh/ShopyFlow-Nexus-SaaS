@@ -279,7 +279,7 @@ export default function POSPage() {
   // Calculations
   const subtotal = cart.reduce((acc, item) => acc + (item.PRICE * item.quantity), 0);
   const totalBeforeDiscount = subtotal;
-  const grandTotal = Math.max(0, totalBeforeDiscount - (Number(discountAmount) || 0));
+  const grandTotal = Math.max(0, totalBeforeDiscount + (Number(discountAmount) || 0));
 
   // Validate Hybrid Math
   const isHybridValid = () => {
@@ -330,7 +330,7 @@ export default function POSPage() {
         SUBTOTAL: subtotal,
         TAX_AMOUNT: 0,
         GRAND_TOTAL: totalBeforeDiscount,
-        DISCOUNT_AMOUNT: Number(discountAmount) || 0,
+        DISCOUNT_AMOUNT: -(Number(discountAmount) || 0),
         ADJUSTED_TOTAL: grandTotal,
         
         PAYMENT_METHOD: paymentMethod,
@@ -584,7 +584,7 @@ export default function POSPage() {
           {/* Adjustments Section */}
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
             <Tag size={16} className="text-muted" />
-            <span style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Discount (Ksh):</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Adjust Price:</span>
             
             <div style={{ display: 'flex', alignItems: 'center', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
               <button 
@@ -612,7 +612,7 @@ export default function POSPage() {
             </div>
             
             <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', flex: 1, textAlign: 'right' }}>
-              *negative = surcharge
+              *negative = discount
             </span>
           </div>
 
@@ -621,9 +621,9 @@ export default function POSPage() {
             <span>Ksh. {subtotal.toLocaleString()}</span>
           </div>
           {Number(discountAmount) !== 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.875rem', color: Number(discountAmount) > 0 ? '#10b981' : '#ef4444' }}>
-              <span>{Number(discountAmount) > 0 ? 'Discount' : 'Surcharge'}</span>
-              <span>- Ksh. {Number(discountAmount).toLocaleString()}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.875rem', color: Number(discountAmount) < 0 ? '#10b981' : '#ef4444' }}>
+              <span>{Number(discountAmount) < 0 ? 'Discount' : 'Surcharge'}</span>
+              <span>{Number(discountAmount) < 0 ? '-' : '+'} Ksh. {Math.abs(Number(discountAmount)).toLocaleString()}</span>
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem', marginTop: '0.5rem', fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)' }}>

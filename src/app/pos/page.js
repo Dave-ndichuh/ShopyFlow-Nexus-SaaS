@@ -41,7 +41,7 @@ export default function POSPage() {
   
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState('Cash'); // Cash, M-Pesa, Hybrid, Credit
-  const [mpesaPhone, setMpesaPhone] = useState('');
+  const [mpesaReceipt, setMpesaReceipt] = useState('');
   
   // Hybrid State
   const [hybridCash, setHybridCash] = useState('');
@@ -290,11 +290,6 @@ export default function POSPage() {
   const checkout = async () => {
     if (cart.length === 0) return;
     
-    if (paymentMethod === 'M-Pesa' && (!mpesaPhone || mpesaPhone.length < 9)) {
-      alert("Please enter a valid phone number for M-Pesa (e.g. 0712345678)");
-      return;
-    }
-
     if (paymentMethod === 'Hybrid' && !isHybridValid()) {
       alert(`Hybrid payments must equal exactly Ksh. ${grandTotal.toLocaleString()}`);
       return;
@@ -327,20 +322,6 @@ export default function POSPage() {
       }
       if (paymentMethod === 'Credit') {
         isCredit = true;
-      }
-
-      // --- M-PESA STK PUSH ---
-      if (paymentMethod === 'M-Pesa' || (paymentMethod === 'Hybrid' && mpesaAmt > 0)) {
-        if (!mpesaPhone || mpesaPhone.length < 9) throw new Error("M-Pesa phone number required.");
-        
-        const mpesaRes = await fetch('/api/mpesa/stkpush', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: mpesaPhone, amount: mpesaAmt })
-        });
-        const mpesaData = await mpesaRes.json();
-        if (mpesaData.error) throw new Error(mpesaData.error);
-        alert(`M-Pesa STK Prompt sent to ${mpesaPhone} for Ksh ${mpesaAmt}. Awaiting PIN...`);
       }
 
       // Create Transaction
@@ -387,7 +368,7 @@ export default function POSPage() {
         // Reset
         setCart([]);
         setLastTransaction(null);
-        setMpesaPhone('');
+        setMpesaReceipt('');
         setHybridCash('');
         setHybridMpesa('');
         setCreditCustomerId('');
@@ -659,7 +640,7 @@ export default function POSPage() {
 
           {/* Conditional Inputs based on Method */}
           {paymentMethod === 'M-Pesa' && (
-            <input type="tel" className="input" placeholder="Phone (e.g. 07...)" style={{ marginBottom: '1rem', border: '1px solid #25D366' }} value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} />
+            <input type="text" className="input" placeholder="M-Pesa Receipt No. (Optional)" style={{ marginBottom: '1rem', border: '1px solid #25D366' }} value={mpesaReceipt} onChange={(e) => setMpesaReceipt(e.target.value)} />
           )}
 
           {paymentMethod === 'Hybrid' && (
@@ -692,7 +673,7 @@ export default function POSPage() {
           )}
 
           {(paymentMethod === 'Hybrid' && Number(hybridMpesa) > 0) && (
-            <input type="tel" className="input" placeholder="M-Pesa Phone (07...)" style={{ marginBottom: '1rem', border: '1px solid #25D366' }} value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} />
+            <input type="text" className="input" placeholder="M-Pesa Receipt No. (Optional)" style={{ marginBottom: '1rem', border: '1px solid #25D366' }} value={mpesaReceipt} onChange={(e) => setMpesaReceipt(e.target.value)} />
           )}
 
           <button 

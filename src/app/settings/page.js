@@ -1,0 +1,376 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/components/AuthGuard';
+import { createClient } from '@/utils/supabase/client';
+import { Save, CreditCard, Settings2, Smartphone, CheckCircle2, AlertCircle } from 'lucide-react';
+
+export default function SettingsPage() {
+  const { activeTenant, setActiveTenant, t, branches: contextBranches } = useAuth();
+  const supabase = createClient();
+  
+  const [activeTab, setActiveTab] = useState('terminology'); // 'terminology' | 'billing'
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+
+  // Terminology State
+  const [industry, setIndustry] = useState('');
+  const [labels, setLabels] = useState({
+    contacts: '',
+    catalog: '',
+    orders: '',
+    vendors: '',
+    pos: ''
+  });
+
+  // Billing State
+  const [billingConfig, setBillingConfig] = useState({
+    pos_enabled: false,
+    pos_paybill: '',
+    pos_till_number: '',
+    pos_consumer_key: '',
+    pos_consumer_secret: ''
+  });
+  
+  const [subscription, setSubscription] = useState(null);
+
+  useEffect(() => {
+    if (activeTenant) {
+      setIndustry(activeTenant.industry || 'Generic');
+      setLabels(activeTenant.terminology || {
+        contacts: 'Contacts', catalog: 'Catalog', orders: 'Orders', vendors: 'Vendors', pos: 'Sales / POS'
+      });
+      setBillingConfig({
+        pos_enabled: activeTenant.pos_enabled || false,
+        pos_paybill: activeTenant.pos_paybill || '',
+        pos_till_number: activeTenant.pos_till_number || '',
+        pos_consumer_key: activeTenant.pos_consumer_key || '',
+        pos_consumer_secret: activeTenant.pos_consumer_secret || ''
+      });
+      fetchSubscription();
+    }
+  }, [activeTenant]);
+
+  const fetchSubscription = async () => {
+    if (!activeTenant) return;
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('tenant_id', activeTenant.id)
+      .single();
+    if (data) setSubscription(data);
+  };
+
+  const handleIndustryChange = (e) => {
+    const val = e.target.value;
+    setIndustry(val);
+    
+    // Auto-fill presets
+    let newLabels = { ...labels };
+    if (val === 'Healthcare') {
+      newLabels = { contacts: 'Patients', catalog: 'Services', orders: 'Visits', vendors: 'Suppliers', pos: 'Check-in' };
+    } else if (val === 'Auto Repair') {
+      newLabels = { contacts: 'Customers', catalog: 'Parts', orders: 'Job Cards', vendors: 'Suppliers', pos: 'Service Bay' };
+    } else if (val === 'Retail') {
+      newLabels = { contacts: 'Customers', catalog: 'Products', orders: 'Sales', vendors: 'Suppliers', pos: 'POS Terminal' };
+    } else if (val === 'Generic') {
+      newLabels = { contacts: 'Contacts', catalog: 'Catalog', orders: 'Orders', vendors: 'Vendors', pos: 'Sales / POS' };
+    }
+    setLabels(newLabels);
+  };
+
+  const saveTerminology = async () => {
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+    const { error } = await supabase
+      .from('tenants')
+      .update({ industry, terminology: labels })
+      .eq('id', activeTenant.id);
+
+    if (error) {
+      setMessage({ type: 'error', text: error.message });
+    } else {
+      setMessage({ type: 'success', text: 'Terminology settings updated successfully!' });
+      setActiveTenant({ ...activeTenant, industry, terminology: labels });
+    }
+    setLoading(false);
+  };
+
+  const saveBillingConfig = async () => {
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+    const { error } = await supabase
+      .from('tenants')
+      .update(billingConfig)
+      .eq('id', activeTenant.id);
+
+    if (error) {
+      setMessage({ type: 'error', text: error.message });
+    } else {
+      setMessage({ type: 'success', text: 'POS Billing configuration saved!' });
+      setActiveTenant({ ...activeTenant, ...billingConfig });
+    }
+    setLoading(false);
+  };
+
+  const initiateSaaSSTKPush = async (e) => {
+    e.preventDefault();
+    const phone = e.target.phone.value;
+    if (!phone) return;
+    
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+    try {
+      const res = await fetch('/api/billing/mpesa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, amount: 2000, type: 'SaaS', tenant_id: activeTenant.id })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'STK Push sent! Please check your phone to complete the payment.' });
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Failed to initiate payment.' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Network error.' });
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+      <h1 className="heading-1" style={{ margin: 0 }}>Workspace Settings</h1>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', overflowX: 'auto' }}>
+        <button 
+          onClick={() => setActiveTab('terminology')} 
+          style={{ 
+            background: 'none', border: 'none', padding: '0.5rem 1rem', fontSize: '1rem', fontWeight: 500, cursor: 'pointer',
+            color: activeTab === 'terminology' ? 'var(--primary)' : 'var(--muted-foreground)',
+            borderBottom: activeTab === 'terminology' ? '2px solid var(--primary)' : 'none',
+            display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap'
+          }}
+        >
+          <Settings2 size={18} /> Terminology
+        </button>
+        <button 
+          onClick={() => setActiveTab('billing')} 
+          style={{ 
+            background: 'none', border: 'none', padding: '0.5rem 1rem', fontSize: '1rem', fontWeight: 500, cursor: 'pointer',
+            color: activeTab === 'billing' ? 'var(--primary)' : 'var(--muted-foreground)',
+            borderBottom: activeTab === 'billing' ? '2px solid var(--primary)' : 'none',
+            display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap'
+          }}
+        >
+          <CreditCard size={18} /> Billing & Subscriptions
+        </button>
+        <button 
+          onClick={() => setActiveTab('branches')} 
+          style={{ 
+            background: 'none', border: 'none', padding: '0.5rem 1rem', fontSize: '1rem', fontWeight: 500, cursor: 'pointer',
+            color: activeTab === 'branches' ? 'var(--primary)' : 'var(--muted-foreground)',
+            borderBottom: activeTab === 'branches' ? '2px solid var(--primary)' : 'none',
+            display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap'
+          }}
+        >
+          <Settings2 size={18} /> Branches
+        </button>
+      </div>
+
+      {message.text && (
+        <div className={`glass ${message.type === 'error' ? 'border-destructive text-destructive' : 'border-success text-success'}`} style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderLeftWidth: '4px', borderLeftStyle: 'solid' }}>
+          {message.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
+          {message.text}
+        </div>
+      )}
+
+      {/* Terminology Tab */}
+      {activeTab === 'terminology' && (
+        <div className="glass" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div>
+            <h2 className="heading-2" style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Industry Profile</h2>
+            <p className="text-muted" style={{ marginBottom: '1rem' }}>Select an industry to auto-configure the platform's vocabulary.</p>
+            <select className="input" value={industry} onChange={handleIndustryChange} style={{ maxWidth: '300px' }}>
+              <option value="Generic">Generic / Other</option>
+              <option value="Retail">Retail Store</option>
+              <option value="Auto Repair">Auto Repair / Garage</option>
+              <option value="Healthcare">Healthcare / Clinic</option>
+            </select>
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '0.5rem 0' }} />
+
+          <div>
+            <h2 className="heading-2" style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Custom Vocabulary</h2>
+            <p className="text-muted" style={{ marginBottom: '1.5rem' }}>Override specific labels to match your business needs.</p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+              <div>
+                <label className="label">Contacts Module (e.g. Customers, Patients)</label>
+                <input className="input" value={labels.contacts} onChange={e => setLabels({...labels, contacts: e.target.value})} />
+              </div>
+              <div>
+                <label className="label">Catalog Module (e.g. Products, Services)</label>
+                <input className="input" value={labels.catalog} onChange={e => setLabels({...labels, catalog: e.target.value})} />
+              </div>
+              <div>
+                <label className="label">Orders Module (e.g. Sales, Visits)</label>
+                <input className="input" value={labels.orders} onChange={e => setLabels({...labels, orders: e.target.value})} />
+              </div>
+              <div>
+                <label className="label">Vendors Module (e.g. Suppliers, Partners)</label>
+                <input className="input" value={labels.vendors} onChange={e => setLabels({...labels, vendors: e.target.value})} />
+              </div>
+              <div>
+                <label className="label">POS Module (e.g. Sales / POS, Check-in)</label>
+                <input className="input" value={labels.pos} onChange={e => setLabels({...labels, pos: e.target.value})} />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <button className="btn btn-primary" onClick={saveTerminology} disabled={loading}>
+              <Save size={18} /> {loading ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Billing Tab */}
+      {activeTab === 'billing' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          
+          {/* SaaS Subscription */}
+          <div className="glass" style={{ padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+              <div>
+                <h2 className="heading-2" style={{ fontSize: '1.25rem', margin: 0 }}>SaaS Subscription</h2>
+                <p className="text-muted" style={{ marginTop: '0.25rem' }}>Manage your platform access.</p>
+              </div>
+              <span className={`badge ${subscription?.status === 'Active' ? 'badge-success' : 'badge-warning'}`} style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem' }}>
+                {subscription?.status || 'No Subscription'}
+              </span>
+            </div>
+
+            {subscription && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: 'var(--radius)', marginBottom: '1.5rem' }}>
+                <div>
+                  <div className="text-muted" style={{ fontSize: '0.875rem' }}>Current Plan</div>
+                  <div style={{ fontWeight: 600, fontSize: '1.125rem' }}>{subscription.plan_name}</div>
+                </div>
+                <div>
+                  <div className="text-muted" style={{ fontSize: '0.875rem' }}>Valid Until</div>
+                  <div style={{ fontWeight: 600, fontSize: '1.125rem' }}>{new Date(subscription.valid_until).toLocaleDateString()}</div>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={initiateSaaSSTKPush} style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', background: 'var(--card)', padding: '1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+              <div style={{ flex: 1 }}>
+                <label className="label">Pay with M-Pesa (Amount: Ksh 2,000 / month)</label>
+                <div style={{ position: 'relative' }}>
+                  <Smartphone size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
+                  <input type="text" name="phone" className="input" placeholder="254712345678" style={{ paddingLeft: '2.5rem' }} required />
+                </div>
+              </div>
+              <button type="submit" className="btn" style={{ backgroundColor: '#25D366', color: '#fff', border: 'none' }} disabled={loading}>
+                {loading ? 'Processing...' : 'Pay via STK Push'}
+              </button>
+            </form>
+          </div>
+
+          {/* POS STK Push Credentials */}
+          <div className="glass" style={{ padding: '2rem' }}>
+            <h2 className="heading-2" style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>POS M-Pesa Integration (Daraja)</h2>
+            <p className="text-muted" style={{ marginBottom: '1.5rem' }}>Enable direct STK Push payments from your customers at the Point of Sale.</p>
+            
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '1.5rem' }}>
+              <input type="checkbox" checked={billingConfig.pos_enabled} onChange={e => setBillingConfig({...billingConfig, pos_enabled: e.target.checked})} style={{ width: '1.25rem', height: '1.25rem' }} />
+              <span style={{ fontWeight: 500 }}>Enable POS M-Pesa Checkouts</span>
+            </label>
+
+            {billingConfig.pos_enabled && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', animation: 'fadeIn 0.3s' }}>
+                <div>
+                  <label className="label">Paybill / Till Number</label>
+                  <input className="input" value={billingConfig.pos_paybill} onChange={e => setBillingConfig({...billingConfig, pos_paybill: e.target.value})} placeholder="e.g. 174379" />
+                </div>
+                <div>
+                  <label className="label">Passkey / Till Number</label>
+                  <input className="input" value={billingConfig.pos_till_number} onChange={e => setBillingConfig({...billingConfig, pos_till_number: e.target.value})} placeholder="Passkey for Paybill" />
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label className="label">Consumer Key</label>
+                  <input type="password" className="input" value={billingConfig.pos_consumer_key} onChange={e => setBillingConfig({...billingConfig, pos_consumer_key: e.target.value})} />
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label className="label">Consumer Secret</label>
+                  <input type="password" className="input" value={billingConfig.pos_consumer_secret} onChange={e => setBillingConfig({...billingConfig, pos_consumer_secret: e.target.value})} />
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button className="btn btn-primary" onClick={saveBillingConfig} disabled={loading}>
+                <Save size={18} /> {loading ? 'Saving...' : 'Save POS Settings'}
+              </button>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* Branches Tab */}
+      {activeTab === 'branches' && (
+        <div className="glass" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div>
+              <h2 className="heading-2" style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>Branches & Locations</h2>
+              <p className="text-muted">Manage your physical locations, stores, or warehouses.</p>
+            </div>
+            {/* Real branch CRUD can be implemented later, for now just show a list with a placeholder button */}
+            <button className="btn btn-primary" onClick={() => alert("Branch creation modal coming soon!")}>
+              Add Branch
+            </button>
+          </div>
+
+          <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+            <table className="table">
+              <thead>
+                <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                  <th style={{ padding: '1rem', textAlign: 'left' }}>Branch Name</th>
+                  <th style={{ padding: '1rem', textAlign: 'left' }}>Code</th>
+                  <th style={{ padding: '1rem', textAlign: 'left' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contextBranches && contextBranches.length > 0 ? (
+                  contextBranches.map(b => (
+                    <tr key={b.id} style={{ borderTop: '1px solid var(--border)' }}>
+                      <td style={{ padding: '1rem', fontWeight: 500 }}>{b.name}</td>
+                      <td style={{ padding: '1rem' }}><span className="badge badge-secondary">{b.code || 'N/A'}</span></td>
+                      <td style={{ padding: '1rem' }}>
+                        <span className={`badge ${b.is_active ? 'badge-success' : 'badge-destructive'}`}>
+                          {b.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="3" style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted-foreground)' }}>
+                      No branches found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

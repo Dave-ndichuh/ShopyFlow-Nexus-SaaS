@@ -1,14 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { Plus, Edit, Trash2, Search, X, Image as ImageIcon } from 'lucide-react';
 import { UploadButton } from '@/utils/uploadthing';
+import { useAuth } from '@/components/AuthGuard';
+import { CatalogService } from '@/lib/services/catalogService';
 
-export default function ProductsPage() {
-  const [products, setProducts] = useState([]);
+export default function CatalogPage() {
+  const { activeTenant, t } = useAuth();
+  const [supabase] = useState(() => createClient());
+
+  const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -16,118 +20,104 @@ export default function ProductsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    PRODUCT_CODE: '', NAME: '', DESCRIPTION: '', ON_HAND: '', PRICE: '', CATEGORY_ID: '', SUPPLIER_ID: '',
-    STATUS: 'active', UOM: 'pcs', REORDER_THRESHOLD: 5, COST_PRICE: '', BARCODE: '', IMAGE_URL: '', TAX_RATE: 16.0, BRAND: '', MODEL: '', WEIGHT: ''
+    sku: '', name: '', description: '', selling_price: '', category_id: '',
+    status: 'active', cost_price: '', barcode: '', image_url: '', type: 'product', track_inventory: true
   });
 
-  const fetchProducts = async () => {
+  const fetchItems = async () => {
+    if (!activeTenant) return;
     setLoading(true);
-    // Fetch products with their category and supplier names
-    const { data, error } = await supabase
-      .from('product')
-      .select(`
-        *,
-        category(CNAME),
-        supplier(COMPANY_NAME)
-      `)
-      .order('PRODUCT_ID', { ascending: false });
-
-    if (!error && data) {
-      setProducts(data);
+    try {
+      const data = await CatalogService.getItems(supabase, activeTenant.id);
+      setItems(data || []);
+      
+      const catData = await CatalogService.getCategories(supabase, activeTenant.id);
+      setCategories(catData || []);
+    } catch (err) {
+      console.error('Error fetching catalog:', err);
+    } finally {
+      setLoading(false);
     }
-
-    const { data: catData } = await supabase.from('category').select('*').order('CNAME', { ascending: true });
-    if (catData) setCategories(catData);
-
-    const { data: supData } = await supabase.from('supplier').select('*');
-    if (supData) setSuppliers(supData);
-
-    setLoading(false);
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    fetchItems();
+  }, [activeTenant]);
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
-    await supabase.from('product').delete().eq('PRODUCT_ID', id);
-    fetchProducts();
+    if (!confirm('Are you sure you want to delete this item?')) return;
+    try {
+      await CatalogService.deleteItem(supabase, id);
+      fetchItems();
+    } catch (err) {
+      alert('Error deleting item: ' + err.message);
+    }
   };
 
-  const openModal = (product = null) => {
-    if (product) {
-      setEditingId(product.PRODUCT_ID);
+  const openModal = (item = null) => {
+    if (item) {
+      setEditingId(item.id);
       setFormData({
-        PRODUCT_CODE: product.PRODUCT_CODE,
-        NAME: product.NAME,
-        DESCRIPTION: product.DESCRIPTION || '',
-        ON_HAND: product.ON_HAND || 0,
-        PRICE: product.PRICE || 0,
-        CATEGORY_ID: product.CATEGORY_ID || '',
-        SUPPLIER_ID: product.SUPPLIER_ID || '',
-        STATUS: product.STATUS || 'active',
-        UOM: product.UOM || 'pcs',
-        REORDER_THRESHOLD: product.REORDER_THRESHOLD || 5,
-        COST_PRICE: product.COST_PRICE || 0,
-        BARCODE: product.BARCODE || '',
-        IMAGE_URL: product.IMAGE_URL || '',
-        TAX_RATE: product.TAX_RATE || 16.0,
-        BRAND: product.BRAND || '',
-        MODEL: product.MODEL || '',
-        WEIGHT: product.WEIGHT || ''
+        sku: item.sku || '',
+        name: item.name || '',
+        description: item.description || '',
+        selling_price: item.selling_price || 0,
+        category_id: item.category_id || '',
+        status: item.status || 'active',
+        cost_price: item.cost_price || 0,
+        barcode: item.barcode || '',
+        image_url: item.image_url || '',
+        type: item.type || 'product',
+        track_inventory: item.track_inventory ?? true
       });
     } else {
       setEditingId(null);
       setFormData({ 
-        PRODUCT_CODE: '', NAME: '', DESCRIPTION: '', ON_HAND: '', PRICE: '', CATEGORY_ID: '', SUPPLIER_ID: '',
-        STATUS: 'active', UOM: 'pcs', REORDER_THRESHOLD: 5, COST_PRICE: '', BARCODE: '', IMAGE_URL: '', TAX_RATE: 16.0, BRAND: '', MODEL: '', WEIGHT: ''
+        sku: '', name: '', description: '', selling_price: '', category_id: '',
+        status: 'active', cost_price: '', barcode: '', image_url: '', type: 'product', track_inventory: true
       });
     }
     setShowModal(true);
   };
 
-  const saveProduct = async (e) => {
+  const saveItem = async (e) => {
     e.preventDefault();
+    if (!activeTenant) return;
+    
     const payload = { 
       ...formData, 
-      DATE_STOCK_IN: new Date().toISOString(),
-      PRICE: Number(formData.PRICE) || 0,
-      COST_PRICE: Number(formData.COST_PRICE) || 0,
-      ON_HAND: Number(formData.ON_HAND) || 0
+      selling_price: Number(formData.selling_price) || 0,
+      cost_price: Number(formData.cost_price) || 0,
+      category_id: formData.category_id ? formData.category_id : null
     };
     
-    let errorMsg = null;
-    if (editingId) {
-      const { error } = await supabase.from('product').update(payload).eq('PRODUCT_ID', editingId);
-      if (error) errorMsg = error.message;
-    } else {
-      const { error } = await supabase.from('product').insert([payload]);
-      if (error) errorMsg = error.message;
+    try {
+      if (editingId) {
+        await CatalogService.updateItem(supabase, editingId, payload);
+      } else {
+        await CatalogService.createItem(supabase, activeTenant.id, payload);
+      }
+      setShowModal(false);
+      fetchItems();
+    } catch (err) {
+      alert(`Database Error: ${err.message}`);
     }
-    
-    if (errorMsg) {
-      alert(`Database Error: ${errorMsg}`);
-      return;
-    }
-    
-    setShowModal(false);
-    fetchProducts();
   };
 
-  const filteredProducts = products.filter(p => 
-    p.NAME?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.PRODUCT_CODE?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredItems = items.filter(p => 
+    p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.sku?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div className="animate-fade-in">
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <h1 className="heading-1" style={{ margin: 0, width: '100%' }}>{t('catalog')} Management</h1>
         <div style={{ position: 'relative', flex: '1 1 300px', maxWidth: '100%' }}>
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
           <input 
             type="text" 
-            placeholder="Search products..." 
+            placeholder={`Search ${t('catalog').toLowerCase()}...`} 
             className="input" 
             style={{ paddingLeft: '2.5rem' }}
             value={searchTerm}
@@ -136,7 +126,7 @@ export default function ProductsPage() {
         </div>
         <button className="btn btn-primary" onClick={() => openModal()}>
           <Plus size={18} />
-          Add Product
+          Add Item
         </button>
       </div>
 
@@ -144,71 +134,61 @@ export default function ProductsPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Code</th>
+              <th>SKU</th>
               <th>Name</th>
               <th>Category</th>
-              <th>Stock</th>
+              <th>Type</th>
               <th>Status</th>
-              <th>Price (Ksh)</th>
+              <th>Price</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>Loading products...</td>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>Loading catalog...</td>
               </tr>
-            ) : filteredProducts.length === 0 ? (
+            ) : filteredItems.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No products found.</td>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No items found.</td>
               </tr>
             ) : (
-              filteredProducts.map((product) => (
-                <tr key={product.PRODUCT_ID}>
-                  <td><span className="badge badge-warning">{product.PRODUCT_CODE}</span></td>
+              filteredItems.map((item) => (
+                <tr key={item.id}>
+                  <td><span className="badge badge-warning">{item.sku || 'N/A'}</span></td>
                   <td style={{ fontWeight: 500 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      {product.IMAGE_URL ? (
-                        <img src={product.IMAGE_URL} alt={product.NAME} style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} />
+                      {item.image_url ? (
+                        <img src={item.image_url} alt={item.name} style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} />
                       ) : (
                         <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <ImageIcon size={20} className="text-muted" />
                         </div>
                       )}
                       <div>
-                        <div>{product.NAME}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', fontWeight: 'normal', marginTop: '0.125rem' }}>
-                          {product.BRAND && <span>{product.BRAND}</span>}
-                          {product.BRAND && product.MODEL && <span> • </span>}
-                          {product.MODEL && <span>{product.MODEL}</span>}
-                        </div>
+                        <div>{item.name}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="text-muted">{product.category?.CNAME || 'N/A'}</td>
+                  <td className="text-muted">{item.categories?.name || 'Uncategorized'}</td>
+                  <td><span className="badge badge-secondary" style={{textTransform: 'capitalize'}}>{item.type}</span></td>
                   <td>
-                    <span className={`badge ${product.ON_HAND <= (product.REORDER_THRESHOLD || 5) ? 'badge-warning' : 'badge-success'}`}>
-                      {product.ON_HAND} {product.UOM || 'pcs'}
-                    </span>
-                    {product.ON_HAND <= (product.REORDER_THRESHOLD || 5) && <span style={{ display: 'block', fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.25rem' }}>Low Stock!</span>}
-                  </td>
-                  <td>
-                    <span className={`badge ${product.STATUS === 'inactive' ? 'badge-destructive' : 'badge-success'}`}>
-                      {product.STATUS || 'active'}
+                    <span className={`badge ${item.status === 'inactive' ? 'badge-destructive' : 'badge-success'}`}>
+                      {item.status || 'active'}
                     </span>
                   </td>
                   <td style={{ fontWeight: 600 }}>
-                    {product.PRICE?.toLocaleString()}
+                    {item.selling_price?.toLocaleString()}
                     <div style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', fontWeight: 'normal' }}>
-                      Cost: {product.COST_PRICE?.toLocaleString()}
+                      Cost: {item.cost_price?.toLocaleString()}
                     </div>
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <button className="btn btn-secondary" style={{ padding: '0.5rem' }} title="Edit" onClick={() => openModal(product)}>
+                      <button className="btn btn-secondary" style={{ padding: '0.5rem' }} title="Edit" onClick={() => openModal(item)}>
                         <Edit size={16} />
                       </button>
-                      <button className="btn btn-destructive" style={{ padding: '0.5rem' }} title="Delete" onClick={() => handleDelete(product.PRODUCT_ID)}>
+                      <button className="btn btn-destructive" style={{ padding: '0.5rem' }} title="Delete" onClick={() => handleDelete(item.id)}>
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -225,11 +205,11 @@ export default function ProductsPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '2rem' }}>
           <div className="glass" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-              <h3 className="heading-2" style={{ margin: 0 }}>{editingId ? 'Edit Product' : 'Add Product'}</h3>
+              <h3 className="heading-2" style={{ margin: 0 }}>{editingId ? 'Edit Item' : 'Add Item'}</h3>
               <button onClick={() => setShowModal(false)}><X size={20} className="text-muted" /></button>
             </div>
             
-            <form onSubmit={saveProduct} style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <form onSubmit={saveItem} style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                 {/* Basic Info */}
@@ -237,99 +217,62 @@ export default function ProductsPage() {
                   <h4 style={{ fontWeight: 600, color: 'var(--primary)', marginBottom: '-0.5rem' }}>Basic Info</h4>
                   
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Product Code / SKU</label>
-                    <input type="text" className="input" placeholder="e.g. BRK-001" value={formData.PRODUCT_CODE} onChange={e => setFormData({...formData, PRODUCT_CODE: e.target.value})} required />
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Item Name</label>
+                    <input type="text" className="input" placeholder="e.g. Premium Widget" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
                   </div>
                   
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Product Name</label>
-                    <input type="text" className="input" placeholder="e.g. Ceramic Brake Pads" value={formData.NAME} onChange={e => setFormData({...formData, NAME: e.target.value})} required />
-                  </div>
-                  
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Brand</label>
-                    <input type="text" className="input" placeholder="e.g. Bosch" value={formData.BRAND} onChange={e => setFormData({...formData, BRAND: e.target.value})} />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Model / Application</label>
-                    <input type="text" className="input" placeholder="e.g. Toyota Hilux 2020+" value={formData.MODEL} onChange={e => setFormData({...formData, MODEL: e.target.value})} />
-                  </div>
-                  
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Barcode (Optional)</label>
-                    <input type="text" className="input" placeholder="Scan or type barcode" value={formData.BARCODE} onChange={e => setFormData({...formData, BARCODE: e.target.value})} />
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>SKU</label>
+                    <input type="text" className="input" placeholder="e.g. WIDG-001" value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
                   </div>
                   
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Category</label>
-                      <select className="input" value={formData.CATEGORY_ID} onChange={e => setFormData({...formData, CATEGORY_ID: parseInt(e.target.value) || ''})} required style={{ background: 'var(--card)' }}>
-                        <option value="" disabled>Select Category</option>
-                        {categories.map(c => <option key={c.CATEGORY_ID} value={c.CATEGORY_ID}>{c.CNAME}</option>)}
+                      <select className="input" value={formData.category_id} onChange={e => setFormData({...formData, category_id: e.target.value || ''})} style={{ background: 'var(--card)' }}>
+                        <option value="">None</option>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
                     
                     <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Supplier</label>
-                      <select className="input" value={formData.SUPPLIER_ID} onChange={e => setFormData({...formData, SUPPLIER_ID: parseInt(e.target.value) || ''})} required style={{ background: 'var(--card)' }}>
-                        <option value="" disabled>Select Supplier</option>
-                        {suppliers.map(s => <option key={s.SUPPLIER_ID} value={s.SUPPLIER_ID}>{s.COMPANY_NAME}</option>)}
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Item Type</label>
+                      <select className="input" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} style={{ background: 'var(--card)' }}>
+                        <option value="product">Product</option>
+                        <option value="service">Service</option>
                       </select>
                     </div>
                   </div>
                   
                   <div>
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Description</label>
-                    <textarea className="input" placeholder="Product details..." rows={3} value={formData.DESCRIPTION} onChange={e => setFormData({...formData, DESCRIPTION: e.target.value})} style={{ resize: 'vertical' }} />
+                    <textarea className="input" placeholder="Item details..." rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} style={{ resize: 'vertical' }} />
                   </div>
                 </div>
 
-                {/* Inventory & Pricing */}
+                {/* Pricing & Settings */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  <h4 style={{ fontWeight: 600, color: 'var(--primary)', marginBottom: '-0.5rem' }}>Inventory & Pricing</h4>
+                  <h4 style={{ fontWeight: 600, color: 'var(--primary)', marginBottom: '-0.5rem' }}>Pricing & Settings</h4>
                   
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Current Stock</label>
-                      <input type="number" min="0" className="input" placeholder="0" value={formData.ON_HAND} onChange={e => setFormData({...formData, ON_HAND: e.target.value === '' ? '' : Number(e.target.value)})} required />
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Cost Price</label>
+                      <input type="number" min="0" className="input" placeholder="0" value={formData.cost_price} onChange={e => setFormData({...formData, cost_price: e.target.value === '' ? '' : Number(e.target.value)})} />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Unit of Measure</label>
-                      <input type="text" className="input" placeholder="e.g. pcs, liters" value={formData.UOM} onChange={e => setFormData({...formData, UOM: e.target.value})} />
-                    </div>
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Reorder Threshold</label>
-                      <input type="number" className="input" placeholder="e.g. 5" value={formData.REORDER_THRESHOLD} onChange={e => setFormData({...formData, REORDER_THRESHOLD: parseInt(e.target.value) || 0})} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Weight/Dims (Optional)</label>
-                      <input type="text" className="input" placeholder="e.g. 2kg" value={formData.WEIGHT} onChange={e => setFormData({...formData, WEIGHT: e.target.value})} />
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Selling Price</label>
+                      <input type="number" min="0" className="input" placeholder="0" value={formData.selling_price} onChange={e => setFormData({...formData, selling_price: e.target.value === '' ? '' : Number(e.target.value)})} required />
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Cost Price (Ksh)</label>
-                      <input type="number" min="0" className="input" placeholder="0" value={formData.COST_PRICE} onChange={e => setFormData({...formData, COST_PRICE: e.target.value === '' ? '' : Number(e.target.value)})} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Selling Price (Ksh)</label>
-                      <input type="number" min="0" className="input" placeholder="0" value={formData.PRICE} onChange={e => setFormData({...formData, PRICE: e.target.value === '' ? '' : Number(e.target.value)})} required />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Tax Rate (%)</label>
-                      <input type="number" className="input" placeholder="16.0" value={formData.TAX_RATE} onChange={e => setFormData({...formData, TAX_RATE: parseFloat(e.target.value) || 0})} />
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
+                      <input type="checkbox" id="track_inventory" checked={formData.track_inventory} onChange={e => setFormData({...formData, track_inventory: e.target.checked})} />
+                      <label htmlFor="track_inventory" style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)' }}>Track Inventory</label>
                     </div>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Status</label>
-                      <select className="input" value={formData.STATUS} onChange={e => setFormData({...formData, STATUS: e.target.value})} style={{ background: 'var(--card)' }}>
+                      <select className="input" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} style={{ background: 'var(--card)' }}>
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                       </select>
@@ -337,13 +280,13 @@ export default function ProductsPage() {
                   </div>
 
                   <div style={{ marginTop: '1rem', padding: '1rem', border: '1px dashed var(--border)', borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                    <h5 style={{ fontWeight: 500, margin: 0 }}>Product Image</h5>
-                    {formData.IMAGE_URL && <img src={formData.IMAGE_URL} alt="Preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />}
+                    <h5 style={{ fontWeight: 500, margin: 0 }}>Item Image</h5>
+                    {formData.image_url && <img src={formData.image_url} alt="Preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />}
                     <UploadButton
                       endpoint="imageUploader"
                       onClientUploadComplete={(res) => {
                         if (res && res[0]) {
-                          setFormData({...formData, IMAGE_URL: res[0].url});
+                          setFormData({...formData, image_url: res[0].url});
                         }
                       }}
                       onUploadError={(error) => {
@@ -357,7 +300,7 @@ export default function ProductsPage() {
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
                 <button type="button" className="btn btn-secondary" style={{ marginRight: '1rem' }} onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 2.5rem' }}>Save Product</button>
+                <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 2.5rem' }}>Save Item</button>
               </div>
             </form>
           </div>

@@ -1,11 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { Plus, Edit, Trash2, Search, X } from 'lucide-react';
+import { useAuth } from '@/components/AuthGuard';
+import { ContactService } from '@/lib/services/contactService';
 
-export default function CustomersPage() {
-  const [customers, setCustomers] = useState([]);
+export default function ContactsPage() {
+  const { activeTenant, t } = useAuth();
+  const [supabase] = useState(() => createClient());
+
+  const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -13,78 +18,77 @@ export default function CustomersPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    FIRST_NAME: '', LAST_NAME: '', PHONE_NUMBER: '', EMAIL: '', ADDRESS: '', CITY: '',
-    COMPANY_NAME: '', NOTES: '', CUSTOMER_TYPE: 'Retail', LOYALTY_STATUS: 'Standard',
-    PREFERRED_CONTACT: 'Phone', TAX_ID: '', SECONDARY_PHONE: ''
+    first_name: '', last_name: '', phone: '', email: '', address: '', type: 'customer'
   });
 
-  const fetchCustomers = async () => {
+  const fetchContacts = async () => {
+    if (!activeTenant) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from('customer')
-      .select('*')
-      .order('CUST_ID', { ascending: false });
-
-    if (!error && data) {
-      setCustomers(data);
+    try {
+      const data = await ContactService.getContacts(supabase, activeTenant.id);
+      setContacts(data || []);
+    } catch (err) {
+      console.error('Error fetching contacts:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
-    fetchCustomers();
-  }, []);
+    fetchContacts();
+  }, [activeTenant]);
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this customer?')) return;
-    await supabase.from('customer').delete().eq('CUST_ID', id);
-    fetchCustomers();
+    if (!confirm('Are you sure you want to delete this contact?')) return;
+    try {
+      await ContactService.deleteContact(supabase, id);
+      fetchContacts();
+    } catch (err) {
+      alert('Error deleting contact: ' + err.message);
+    }
   };
 
-  const openModal = (customer = null) => {
-    if (customer) {
-      setEditingId(customer.CUST_ID);
+  const openModal = (contact = null) => {
+    if (contact) {
+      setEditingId(contact.id);
       setFormData({
-        FIRST_NAME: customer.FIRST_NAME || '',
-        LAST_NAME: customer.LAST_NAME || '',
-        PHONE_NUMBER: customer.PHONE_NUMBER || '',
-        EMAIL: customer.EMAIL || '',
-        ADDRESS: customer.ADDRESS || '',
-        CITY: customer.CITY || '',
-        COMPANY_NAME: customer.COMPANY_NAME || '',
-        NOTES: customer.NOTES || '',
-        CUSTOMER_TYPE: customer.CUSTOMER_TYPE || 'Retail',
-        LOYALTY_STATUS: customer.LOYALTY_STATUS || 'Standard',
-        PREFERRED_CONTACT: customer.PREFERRED_CONTACT || 'Phone',
-        TAX_ID: customer.TAX_ID || '',
-        SECONDARY_PHONE: customer.SECONDARY_PHONE || ''
+        first_name: contact.first_name || '',
+        last_name: contact.last_name || '',
+        phone: contact.phone || '',
+        email: contact.email || '',
+        address: contact.address || '',
+        type: contact.type || 'customer'
       });
     } else {
       setEditingId(null);
       setFormData({ 
-        FIRST_NAME: '', LAST_NAME: '', PHONE_NUMBER: '', EMAIL: '', ADDRESS: '', CITY: '',
-        COMPANY_NAME: '', NOTES: '', CUSTOMER_TYPE: 'Retail', LOYALTY_STATUS: 'Standard',
-        PREFERRED_CONTACT: 'Phone', TAX_ID: '', SECONDARY_PHONE: ''
+        first_name: '', last_name: '', phone: '', email: '', address: '', type: 'customer'
       });
     }
     setShowModal(true);
   };
 
-  const saveCustomer = async (e) => {
+  const saveContact = async (e) => {
     e.preventDefault();
-    if (editingId) {
-      await supabase.from('customer').update(formData).eq('CUST_ID', editingId);
-    } else {
-      await supabase.from('customer').insert([formData]);
+    if (!activeTenant) return;
+
+    try {
+      if (editingId) {
+        await ContactService.updateContact(supabase, editingId, formData);
+      } else {
+        await ContactService.createContact(supabase, activeTenant.id, formData);
+      }
+      setShowModal(false);
+      fetchContacts();
+    } catch (err) {
+      alert(`Database Error: ${err.message}`);
     }
-    setShowModal(false);
-    fetchCustomers();
   };
 
-  const filteredCustomers = customers.filter(c => 
-    c.FIRST_NAME?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.LAST_NAME?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.PHONE_NUMBER?.includes(searchTerm)
+  const filteredContacts = contacts.filter(c => 
+    c.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.phone?.includes(searchTerm)
   );
 
   return (
@@ -94,7 +98,7 @@ export default function CustomersPage() {
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
           <input 
             type="text" 
-            placeholder="Search customers..." 
+            placeholder={`Search ${t('contacts').toLowerCase()}...`} 
             className="input" 
             style={{ paddingLeft: '2.5rem' }}
             value={searchTerm}
@@ -103,7 +107,7 @@ export default function CustomersPage() {
         </div>
         <button className="btn btn-primary" onClick={() => openModal()}>
           <Plus size={18} />
-          Add Customer
+          Add {t('contacts')}
         </button>
       </div>
 
@@ -111,54 +115,44 @@ export default function CustomersPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Customer</th>
+              <th>Contact</th>
               <th>Contact Info</th>
-              <th>Type / Status</th>
-              <th>City</th>
+              <th>Type</th>
+              <th>Address</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>Loading customers...</td>
+                <td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>Loading contacts...</td>
               </tr>
-            ) : filteredCustomers.length === 0 ? (
+            ) : filteredContacts.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>No customers found.</td>
+                <td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No contacts found.</td>
               </tr>
             ) : (
-              filteredCustomers.map((customer) => (
-                <tr key={customer.CUST_ID}>
-                  <td><span className="badge badge-warning">C-{customer.CUST_ID}</span></td>
+              filteredContacts.map((contact) => (
+                <tr key={contact.id}>
                   <td>
-                    <div style={{ fontWeight: 600, color: 'var(--foreground)' }}>{customer.FIRST_NAME} {customer.LAST_NAME}</div>
-                    {customer.COMPANY_NAME && <div style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>{customer.COMPANY_NAME}</div>}
+                    <div style={{ fontWeight: 600, color: 'var(--foreground)' }}>{contact.first_name} {contact.last_name}</div>
                   </td>
                   <td>
-                    <div style={{ fontSize: '0.875rem' }}>{customer.PHONE_NUMBER}</div>
-                    {customer.EMAIL && <div style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>{customer.EMAIL}</div>}
+                    <div style={{ fontSize: '0.875rem' }}>{contact.phone}</div>
+                    {contact.email && <div style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>{contact.email}</div>}
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <span className={`badge ${customer.CUSTOMER_TYPE === 'Wholesale' ? 'badge-warning' : 'badge-success'}`}>
-                        {customer.CUSTOMER_TYPE || 'Retail'}
-                      </span>
-                      {customer.LOYALTY_STATUS === 'Premium' && (
-                        <span className="badge badge-primary" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                          Premium
-                        </span>
-                      )}
-                    </div>
+                    <span className={`badge badge-success`} style={{ textTransform: 'capitalize' }}>
+                      {contact.type || 'customer'}
+                    </span>
                   </td>
-                  <td className="text-muted">{customer.CITY || 'N/A'}</td>
+                  <td className="text-muted">{contact.address || 'N/A'}</td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <button className="btn btn-secondary" style={{ padding: '0.5rem' }} title="Edit" onClick={() => openModal(customer)}>
+                      <button className="btn btn-secondary" style={{ padding: '0.5rem' }} title="Edit" onClick={() => openModal(contact)}>
                         <Edit size={16} />
                       </button>
-                      <button className="btn btn-destructive" style={{ padding: '0.5rem' }} title="Delete" onClick={() => handleDelete(customer.CUST_ID)}>
+                      <button className="btn btn-destructive" style={{ padding: '0.5rem' }} title="Delete" onClick={() => handleDelete(contact.id)}>
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -173,67 +167,36 @@ export default function CustomersPage() {
       {/* Modal Overlay */}
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '2rem' }}>
-          <div className="glass" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
+          <div className="glass" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-              <h3 className="heading-2" style={{ margin: 0 }}>{editingId ? 'Edit Customer' : 'Add Customer'}</h3>
+              <h3 className="heading-2" style={{ margin: 0 }}>{editingId ? 'Edit Contact' : 'Add Contact'}</h3>
               <button onClick={() => setShowModal(false)}><X size={20} className="text-muted" /></button>
             </div>
             
-            <form onSubmit={saveCustomer} style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <form onSubmit={saveContact} style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                {/* Personal & Contact Info */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <h4 style={{ fontWeight: 600, color: 'var(--primary)' }}>Personal & Contact</h4>
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <input type="text" className="input" placeholder="First Name" value={formData.FIRST_NAME} onChange={e => setFormData({...formData, FIRST_NAME: e.target.value})} required />
-                    <input type="text" className="input" placeholder="Last Name" value={formData.LAST_NAME} onChange={e => setFormData({...formData, LAST_NAME: e.target.value})} required />
-                  </div>
-                  <input type="email" className="input" placeholder="Email Address" value={formData.EMAIL} onChange={e => setFormData({...formData, EMAIL: e.target.value})} />
-                  
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <input type="tel" className="input" placeholder="Primary Phone" value={formData.PHONE_NUMBER} onChange={e => setFormData({...formData, PHONE_NUMBER: e.target.value})} required />
-                    <input type="tel" className="input" placeholder="Secondary Phone" value={formData.SECONDARY_PHONE} onChange={e => setFormData({...formData, SECONDARY_PHONE: e.target.value})} />
-                  </div>
-
-                  <select className="input" value={formData.PREFERRED_CONTACT} onChange={e => setFormData({...formData, PREFERRED_CONTACT: e.target.value})} style={{ background: 'var(--card)' }}>
-                    <option value="Phone">Prefers Phone</option>
-                    <option value="Email">Prefers Email</option>
-                    <option value="SMS">Prefers SMS</option>
-                  </select>
-
-                  <h4 style={{ fontWeight: 600, color: 'var(--primary)', marginTop: '0.5rem' }}>Location</h4>
-                  <input type="text" className="input" placeholder="Street Address" value={formData.ADDRESS} onChange={e => setFormData({...formData, ADDRESS: e.target.value})} />
-                  <input type="text" className="input" placeholder="City" value={formData.CITY} onChange={e => setFormData({...formData, CITY: e.target.value})} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <input type="text" className="input" placeholder="First Name" value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} required />
+                  <input type="text" className="input" placeholder="Last Name" value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} required />
                 </div>
+                
+                <input type="email" className="input" placeholder="Email Address" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                
+                <input type="tel" className="input" placeholder="Phone Number" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                
+                <select className="input" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} style={{ background: 'var(--card)' }}>
+                  <option value="customer">Customer</option>
+                  <option value="client">Client</option>
+                  <option value="lead">Lead</option>
+                </select>
 
-                {/* Business & CRM Info */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <h4 style={{ fontWeight: 600, color: 'var(--primary)' }}>Business & CRM</h4>
-                  
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <select className="input" value={formData.CUSTOMER_TYPE} onChange={e => setFormData({...formData, CUSTOMER_TYPE: e.target.value})} style={{ background: 'var(--card)' }}>
-                      <option value="Retail">Retail</option>
-                      <option value="Wholesale">Wholesale</option>
-                      <option value="B2B">B2B</option>
-                    </select>
-                    <select className="input" value={formData.LOYALTY_STATUS} onChange={e => setFormData({...formData, LOYALTY_STATUS: e.target.value})} style={{ background: 'var(--card)' }}>
-                      <option value="Standard">Standard</option>
-                      <option value="Premium">Premium</option>
-                      <option value="VIP">VIP</option>
-                    </select>
-                  </div>
-
-                  <input type="text" className="input" placeholder="Company Name" value={formData.COMPANY_NAME} onChange={e => setFormData({...formData, COMPANY_NAME: e.target.value})} />
-                  <input type="text" className="input" placeholder="Tax ID / Business ID" value={formData.TAX_ID} onChange={e => setFormData({...formData, TAX_ID: e.target.value})} />
-                  
-                  <textarea className="input" placeholder="Notes or Internal Comments..." rows={4} value={formData.NOTES} onChange={e => setFormData({...formData, NOTES: e.target.value})} style={{ resize: 'vertical', flex: 1 }} />
-                </div>
+                <textarea className="input" placeholder="Address..." rows={3} value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} style={{ resize: 'vertical' }} />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
                 <button type="button" className="btn btn-secondary" style={{ marginRight: '1rem' }} onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 2.5rem' }}>Save Customer</button>
+                <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 2.5rem' }}>Save Contact</button>
               </div>
             </form>
           </div>

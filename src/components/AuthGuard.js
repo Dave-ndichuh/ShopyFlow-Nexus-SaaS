@@ -2,9 +2,9 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 
-const AuthContext = createContext({ user: null, role: null, employeeId: null, loading: true });
+const AuthContext = createContext({ user: null, tenants: [], activeTenant: null, loading: true });
 
 export const useAuth = () => useContext(AuthContext);
 
@@ -12,62 +12,62 @@ export default function AuthProvider({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
-  const [employeeId, setEmployeeId] = useState(null);
+  const [tenants, setTenants] = useState([]);
+  const [activeTenant, setActiveTenant] = useState(null);
+  
+  const [branches, setBranches] = useState([]);
+  const [activeBranch, setActiveBranch] = useState(null);
+  
+  const [supabase] = useState(() => createClient());
 
   useEffect(() => {
     const checkAuth = async () => {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (!user) {
+      if (!session) {
         setUser(null);
-        setRole(null);
-        setEmployeeId(null);
-        if (pathname !== '/login' && pathname !== '/employee-login') {
+        if (pathname !== '/login') {
           router.push('/login');
-        } else {
-          setAuthorized(true);
         }
         setLoading(false);
         return;
       }
 
-      setUser(user);
+      setUser(session.user);
 
-      const { data: empData, error: empError } = await supabase
-        .from('employee')
-        .select('EMAIL, EMPLOYEE_ID')
-        .ilike('EMAIL', user.email)
-        .maybeSingle();
+      // Fetch user's tenants via RPC or direct query.
+      // Wait, we have the RPC `get_user_tenant_ids()` but we also want the tenant names.
+      // Let's just query the public.tenants table. RLS ensures we only see our own tenants!
+      const { data: tenantData, error: tenantError } = await supabase
+        .from('tenants')
+        .select('*');
 
-      const isEmployee = !!empData;
-      const currentRole = isEmployee ? 'employee' : 'admin';
-      setRole(currentRole);
-      setEmployeeId(empData?.EMPLOYEE_ID || null);
-
-      if (isEmployee) {
-        const allowedEmployeeRoutes = ['/pos', '/customers', '/transactions', '/services', '/login', '/employee-login'];
-        if (!allowedEmployeeRoutes.includes(pathname)) {
-          router.push('/pos');
-          return;
+      if (!tenantError && tenantData) {
+        setTenants(tenantData);
+        // By default, select the first active tenant if none is selected
+        if (tenantData.length > 0) {
+          const defaultTenant = tenantData[0];
+          setActiveTenant(defaultTenant);
         }
       }
 
-      setAuthorized(true);
       setLoading(false);
     };
 
     checkAuth();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         setUser(null);
-        setRole(null);
-        setEmployeeId(null);
+        setTenants([]);
+        setActiveTenant(null);
+        setBranches([]);
+        setActiveBranch(null);
         router.push('/login');
+      } else if (event === 'SIGNED_IN') {
+        checkAuth();
       }
     });
 
@@ -76,14 +76,59 @@ export default function AuthProvider({ children }) {
     };
   }, [pathname, router]);
 
+  // Secondary effect: when activeTenant changes, fetch its branches
+  useEffect(() => {
+    if (!activeTenant) return;
+
+    const fetchBranches = async () => {
+      const { data, error } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('tenant_id', activeTenant.id)
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+        
+      if (!error && data) {
+        setBranches(data);
+        if (data.length > 0) {
+          // If we already have an active branch from this tenant, keep it. Otherwise, set to the first one.
+          setActiveBranch(prev => {
+            if (prev && prev.tenant_id === activeTenant.id) return prev;
+            return data[0];
+          });
+        } else {
+          setActiveBranch(null);
+        }
+      }
+    };
+
+    fetchBranches();
+  }, [activeTenant]);
+
   if (loading) {
     return <div style={{ minHeight: '100vh', background: 'var(--background)' }} />;
   }
 
-  if (!authorized && pathname !== '/login' && pathname !== '/employee-login') return null;
+  if (!user && pathname !== '/login') return null;
+
+  const t = (key) => {
+    // Default fallback dictionary if nothing is set
+    const defaults = {
+      contacts: 'Contacts',
+      catalog: 'Catalog',
+      orders: 'Orders',
+      vendors: 'Vendors',
+      pos: 'Sales / POS'
+    };
+    
+    if (!activeTenant || !activeTenant.terminology) {
+      return defaults[key] || key;
+    }
+    return activeTenant.terminology[key] || defaults[key] || key;
+  };
 
   return (
-    <AuthContext.Provider value={{ user, role, employeeId, loading }}>
+    <AuthContext.Provider value={{ user, tenants, activeTenant, setActiveTenant, branches, activeBranch, setActiveBranch, loading, t }}>
       {children}
     </AuthContext.Provider>
   );

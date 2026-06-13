@@ -12,9 +12,10 @@ import {
   Settings,
   LogOut,
   BarChart3,
-  Wrench
+  Wrench,
+  Boxes
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -23,10 +24,11 @@ import { useAuth } from '@/components/AuthGuard';
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { role } = useAuth();
+  const { user, t, branches, activeBranch, setActiveBranch } = useAuth();
+  const [supabase] = useState(() => createClient());
 
   // Hide sidebar on login pages
-  if (pathname === '/login' || pathname === '/employee-login') return null;
+  if (pathname === '/login') return null;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -40,29 +42,38 @@ export default function Sidebar() {
 
   let navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Point of Sale', path: '/pos', icon: ShoppingCart },
-    { name: 'Products', path: '/products', icon: Package },
-    { name: 'Customers', path: '/customers', icon: Users },
-    { name: 'Suppliers', path: '/suppliers', icon: Truck },
-    { name: 'Transactions', path: '/transactions', icon: FileText },
-    { name: 'Services', path: '/services', icon: Wrench },
+    { name: t('pos'), path: '/pos', icon: ShoppingCart },
+    { name: t('catalog'), path: '/products', icon: Package },
+    { name: 'Inventory', path: '/inventory', icon: Boxes },
+    { name: t('contacts'), path: '/customers', icon: Users },
+    { name: t('vendors'), path: '/suppliers', icon: Truck },
+    { name: t('orders'), path: '/transactions', icon: FileText },
     { name: 'Reports', path: '/reports', icon: BarChart3 },
-    { name: 'Employees', path: '/employees', icon: Users },
+    { name: 'Settings', path: '/settings', icon: Settings },
   ];
-
-  if (role === 'employee') {
-    navItems = [
-      { name: 'Point of Sale', path: '/pos', icon: ShoppingCart },
-      { name: 'Customers', path: '/customers', icon: Users },
-      { name: 'Transactions', path: '/transactions', icon: FileText },
-      { name: 'Services', path: '/services', icon: Wrench },
-    ];
-  }
 
   return (
     <aside className="sidebar glass-panel">
-      <div className="sidebar-header" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-        <img src="/logo.png" alt="Jobea Auto Logo" style={{ height: '48px', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(16, 185, 129, 0.1))', opacity: 0.95, transition: 'all 0.3s ease' }} />
+      <div className="sidebar-header" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--foreground)', letterSpacing: '-0.05em', margin: 0 }}>
+          Nexus
+        </h2>
+        
+        {branches && branches.length > 0 && (
+          <select 
+            className="input" 
+            style={{ width: '100%', fontSize: '0.875rem', padding: '0.5rem', background: 'rgba(255,255,255,0.05)' }}
+            value={activeBranch?.id || ''}
+            onChange={(e) => {
+              const b = branches.find(branch => branch.id === e.target.value);
+              if (b) setActiveBranch(b);
+            }}
+          >
+            {branches.map(b => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        )}
       </div>
       
       <nav className="sidebar-nav">

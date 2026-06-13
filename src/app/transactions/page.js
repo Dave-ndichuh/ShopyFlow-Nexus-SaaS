@@ -1,13 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { Search, Printer, Calendar } from 'lucide-react';
 import Receipt from '@/components/Receipt';
 import { useAuth } from '@/components/AuthGuard';
+import { OrderService } from '@/lib/services/orderService';
 
-export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState([]);
+export default function OrdersPage() {
+  const { activeTenant, t } = useAuth();
+  const [supabase] = useState(() => createClient());
+
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Filters
@@ -16,8 +20,6 @@ export default function TransactionsPage() {
   
   // Print State
   const [printData, setPrintData] = useState(null);
-  
-  const { role, employeeId } = useAuth();
 
   // Auto-trigger print when printData is fully rendered
   useEffect(() => {
@@ -30,77 +32,72 @@ export default function TransactionsPage() {
   }, [printData]);
 
   useEffect(() => {
-    const fetchTransactions = async () => {
-      let query = supabase
-        .from('transaction')
-        .select(`
-          *,
-          customer!transaction_CUST_ID_fkey(FIRST_NAME, LAST_NAME),
-          credit_customer:customer!transaction_CREDIT_CUSTOMER_ID_fkey(FIRST_NAME, LAST_NAME),
-          transaction_details(*, product(NAME))
-        `)
-        .order('TRANS_ID', { ascending: false });
-
-      if (role === 'employee' && employeeId) {
-        query = query.eq('EMPLOYEE_ID', employeeId);
+    const fetchOrders = async () => {
+      if (!activeTenant) return;
+      setLoading(true);
+      try {
+        const data = await OrderService.getOrders(supabase, activeTenant.id);
+        setOrders(data || []);
+      } catch (err) {
+        console.error('Error fetching orders:', err);
+      } finally {
+        setLoading(false);
       }
-      
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Transactions fetch error:', error);
-      } else if (data) {
-        setTransactions(data);
-      }
-      setLoading(false);
     };
-    fetchTransactions();
-  }, [role, employeeId]);
+    fetchOrders();
+  }, [activeTenant]);
 
-  const filteredTransactions = transactions.filter(t => {
+  const filteredOrders = orders.filter(o => {
     let matchesId = true;
     let matchesDate = true;
 
     if (searchId) {
-      matchesId = t.TRANS_ID?.toString() === searchId || t.TRANS_ID?.toString().includes(searchId);
+      matchesId = o.id?.toString().includes(searchId);
     }
     
     if (searchDate) {
-      const d = new Date(t.CREATED_AT);
-      const tDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      matchesDate = tDate === searchDate;
+      const d = new Date(o.created_at);
+      const oDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      matchesDate = oDate === searchDate;
     }
 
     return matchesId && matchesDate;
   });
 
-  const handlePrint = (trans) => {
-    const cartItems = trans.transaction_details?.map(d => ({
-      PRODUCT_ID: d.PRODUCT_ID,
-      NAME: d.product?.NAME || 'Unknown Part',
-      PRICE: d.UNIT_PRICE,
-      quantity: d.QTY
-    })) || [];
+  const handlePrint = async (order) => {
+    try {
+      const orderItems = await OrderService.getOrderDetails(supabase, order.id);
+      
+      const cartItems = orderItems?.map(d => ({
+        id: d.item_id,
+        NAME: d.catalog_items?.name || 'Unknown Item',
+        PRICE: d.unit_price,
+        quantity: d.quantity
+      })) || [];
 
-    setPrintData({
-      transaction: trans,
-      cart: cartItems,
-      subtotal: trans.SUBTOTAL,
-      vat: trans.TAX_AMOUNT,
-      grandTotal: trans.GRAND_TOTAL
-    });
+      setPrintData({
+        transaction: order,
+        cart: cartItems,
+        subtotal: order.subtotal,
+        vat: order.tax_total,
+        grandTotal: order.grand_total,
+        tenant: activeTenant
+      });
+    } catch (err) {
+      console.error('Error fetching order items for print', err);
+    }
   };
 
   return (
     <div className="animate-fade-in">
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginBottom: '2rem' }}>
-        
+        <h1 className="heading-1" style={{ margin: 0, width: '100%' }}>{t('orders')} Management</h1>
         {/* ID Filter */}
         <div style={{ position: 'relative', flex: '1 1 250px', maxWidth: '100%' }}>
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
           <input 
             type="text" 
-            placeholder="Search Exact ID..." 
+            placeholder="Search Order ID..." 
             className="input" 
             style={{ paddingLeft: '2.5rem' }}
             value={searchId}
@@ -131,57 +128,55 @@ export default function TransactionsPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Transaction ID</th>
+              <th>Order ID</th>
               <th>Date & Time</th>
-              <th>Customer</th>
-              <th>Items</th>
+              <th>Contact</th>
+              <th>Status</th>
               <th>Payment Info</th>
-              <th>Total (Ksh)</th>
+              <th>Total</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>Loading transactions...</td>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>Loading orders...</td>
               </tr>
-            ) : filteredTransactions.length === 0 ? (
+            ) : filteredOrders.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No transactions match the filters.</td>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No orders match the filters.</td>
               </tr>
             ) : (
-              filteredTransactions.map((trans) => (
-                <tr key={trans.TRANS_ID}>
+              filteredOrders.map((order) => (
+                <tr key={order.id}>
                   <td>
-                    <span className="badge badge-warning">TRX-{trans.TRANS_ID}</span>
-                    {trans.IS_CREDIT && <span className="badge badge-destructive" style={{ marginLeft: '0.5rem' }}>Credit</span>}
+                    <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>{order.id.split('-')[0]}</span>
                   </td>
                   <td className="text-muted">
-                    {new Date(trans.CREATED_AT).toLocaleDateString()} <br/>
-                    <small>{new Date(trans.CREATED_AT).toLocaleTimeString()}</small>
+                    {new Date(order.created_at).toLocaleDateString()} <br/>
+                    <small>{new Date(order.created_at).toLocaleTimeString()}</small>
                   </td>
                   <td>
-                    {(trans.customer || trans.credit_customer) ? `${(trans.customer || trans.credit_customer).FIRST_NAME} ${(trans.customer || trans.credit_customer).LAST_NAME}` : 'Walk-in'}
+                    {order.contact_name}
                   </td>
                   <td>
-                    <span className="badge badge-success">
-                      {trans.transaction_details?.reduce((acc, d) => acc + d.QTY, 0) || 0} items
+                    <span className="badge badge-success" style={{ textTransform: 'capitalize' }}>
+                      {order.status}
                     </span>
                   </td>
                   <td className="text-muted">
-                    {trans.PAYMENT_METHOD}
-                    {trans.HYBRID_PAYMENT && <div style={{ fontSize: '0.75rem' }}>Cash: {trans.CASH_AMOUNT} | M-Pesa: {trans.MPESA_AMOUNT}</div>}
+                    {order.payment_method || 'Unknown'}
                   </td>
                   <td style={{ fontWeight: 600, color: 'var(--primary)' }}>
-                    Ksh {trans.ADJUSTED_TOTAL ? trans.ADJUSTED_TOTAL.toLocaleString() : trans.GRAND_TOTAL?.toLocaleString()}
-                    {Number(trans.DISCOUNT_AMOUNT) !== 0 && (
-                      <div style={{ fontSize: '0.75rem', color: Number(trans.DISCOUNT_AMOUNT) > 0 ? '#10b981' : '#ef4444', fontWeight: 'normal' }}>
-                        {Number(trans.DISCOUNT_AMOUNT) > 0 ? 'Discounted' : 'Surcharged'}
+                    {order.grand_total?.toLocaleString()}
+                    {Number(order.discount_total) !== 0 && (
+                      <div style={{ fontSize: '0.75rem', color: Number(order.discount_total) > 0 ? '#10b981' : '#ef4444', fontWeight: 'normal' }}>
+                        Discounted
                       </div>
                     )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <button className="btn btn-secondary" style={{ padding: '0.5rem' }} title="Print Invoice" onClick={() => handlePrint(trans)}>
+                    <button className="btn btn-secondary" style={{ padding: '0.5rem' }} title="Print Invoice" onClick={() => handlePrint(order)}>
                       <Printer size={16} /> Print
                     </button>
                   </td>
@@ -198,7 +193,8 @@ export default function TransactionsPage() {
           cart={printData.cart} 
           subtotal={printData.subtotal} 
           vat={printData.vat} 
-          grandTotal={printData.transaction.ADJUSTED_TOTAL || printData.grandTotal} 
+          grandTotal={printData.grandTotal} 
+          tenant={printData.tenant}
         />
       )}
     </div>

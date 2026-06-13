@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { TrendingUp, DollarSign, Activity, ShoppingCart, PackageOpen, Tag, BarChart3, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
@@ -9,6 +9,7 @@ import MetricCard from '@/components/dashboard/MetricCard';
 import InsightCard from '@/components/dashboard/InsightCard';
 
 export default function Dashboard() {
+  const supabase = createClient();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
@@ -42,49 +43,50 @@ export default function Dashboard() {
       const today = new Date();
       const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
       const sevenDaysAgo = new Date(today);
-      sevenDaysAgo.setDate(today.getDate() - 6); // Last 7 days including today
+      sevenDaysAgo.setDate(today.getDate() - 6);
       
       try {
-        // Fetch all products for stock value & low stock
-        const { data: products } = await supabase.from('product').select('PRODUCT_ID, NAME, ON_HAND, COST_PRICE');
+        // Fetch inventory balances mapped to items
+        const { data: inventoryData } = await supabase
+          .from('inventory_balances')
+          .select('quantity, item_id, catalog_items(name, cost_price)');
         
         let stockVal = 0;
         let lowStock = 0;
-        if (products) {
-          products.forEach(p => {
-            const onHand = Number(p.ON_HAND) || 0;
-            const cost = Number(p.COST_PRICE) || 0;
-            if (onHand > 0) stockVal += (onHand * cost);
-            if (onHand <= 5) lowStock++;
+        if (inventoryData) {
+          inventoryData.forEach(inv => {
+            const qty = Number(inv.quantity) || 0;
+            const cost = Number(inv.catalog_items?.cost_price) || 0;
+            if (qty > 0) stockVal += (qty * cost);
+            if (qty <= 5) lowStock++;
           });
         }
 
-        // Fetch transactions for this month WITH details for profit math
-        const { data: currentMonthTrans } = await supabase
-          .from('transaction')
+        // Fetch orders for this month WITH details
+        const { data: currentMonthOrders } = await supabase
+          .from('orders')
           .select(`
             *,
-            transaction_details (
-              PRODUCT_ID,
-              QTY,
-              UNIT_PRICE,
-              product (NAME, COST_PRICE)
+            order_items (
+              item_id,
+              quantity,
+              unit_price,
+              subtotal,
+              catalog_items (name, cost_price)
             )
           `)
-          .gte('CREATED_AT', firstDayOfMonth)
-          .order('CREATED_AT', { ascending: true }); // Ascending helps with trend chart
+          .gte('created_at', firstDayOfMonth)
+          .order('created_at', { ascending: true });
 
         let tSales = 0;
         let tCost = 0;
         let tCount = 0;
         const productSales = {};
         
-        // For Payment Breakdown Pie Chart
         let cashTotal = 0;
         let mpesaTotal = 0;
         let creditTotal = 0;
 
-        // For Sales Trend Line Chart (Last 7 Days)
         const trendMap = {};
         for(let i=0; i<7; i++) {
           const d = new Date(sevenDaysAgo);
@@ -95,53 +97,44 @@ export default function Dashboard() {
           trendMap[`${yyyy}-${mm}-${dd}`] = 0;
         }
 
-        if (currentMonthTrans) {
-          currentMonthTrans.forEach(t => {
+        if (currentMonthOrders) {
+          currentMonthOrders.forEach(t => {
             tCount++;
-            const saleTotal = Number(t.ADJUSTED_TOTAL) || Number(t.GRAND_TOTAL) || 0;
+            const saleTotal = Number(t.grand_total) || 0;
             tSales += saleTotal;
 
-            // Trend Chart
-            const tD = new Date(t.CREATED_AT);
+            const tD = new Date(t.created_at);
             const tDate = `${tD.getFullYear()}-${String(tD.getMonth() + 1).padStart(2, '0')}-${String(tD.getDate()).padStart(2, '0')}`;
             
             if (trendMap[tDate] !== undefined) {
               trendMap[tDate] += saleTotal;
             }
 
-            // Payment Methods
-            if (t.PAYMENT_METHOD === 'Cash') cashTotal += saleTotal;
-            else if (t.PAYMENT_METHOD === 'M-Pesa') mpesaTotal += saleTotal;
-            else if (t.PAYMENT_METHOD === 'Credit') creditTotal += saleTotal;
-            else if (t.PAYMENT_METHOD === 'Hybrid') {
-              cashTotal += Number(t.CASH_AMOUNT) || 0;
-              mpesaTotal += Number(t.MPESA_AMOUNT) || 0;
-            }
+            if (t.payment_method === 'Cash') cashTotal += saleTotal;
+            else if (t.payment_method === 'M-Pesa') mpesaTotal += saleTotal;
+            else if (t.payment_method === 'Credit') creditTotal += saleTotal;
 
-            // Details for COGS & Top Product
-            if (t.transaction_details) {
-              t.transaction_details.forEach(d => {
-                const cost = Number(d.product?.COST_PRICE) || 0;
-                const qty = Number(d.QTY) || 0;
+            if (t.order_items) {
+              t.order_items.forEach(d => {
+                const cost = Number(d.catalog_items?.cost_price) || 0;
+                const qty = Number(d.quantity) || 0;
                 tCost += (cost * qty);
 
-                if (!productSales[d.PRODUCT_ID]) {
-                  productSales[d.PRODUCT_ID] = { name: d.product?.NAME || 'Unknown Part', qty: 0 };
+                if (!productSales[d.item_id]) {
+                  productSales[d.item_id] = { name: d.catalog_items?.name || 'Unknown Item', qty: 0 };
                 }
-                productSales[d.PRODUCT_ID].qty += qty;
+                productSales[d.item_id].qty += qty;
               });
             }
           });
         }
 
-        // Calculations
         const grossProfit = tSales - tCost;
         const profitMargin = tSales > 0 ? (grossProfit / tSales) * 100 : 0;
         const atv = tCount > 0 ? tSales / tCount : 0;
 
         const topP = Object.values(productSales).sort((a, b) => b.qty - a.qty)[0] || { name: 'N/A', units: 0 };
 
-        // Formatting Chart Data
         const trendData = Object.keys(trendMap).sort().map(date => {
           const [, month, day] = date.split('-');
           return { name: `${day}/${month}`, Sales: trendMap[date] };
@@ -174,7 +167,7 @@ export default function Dashboard() {
     };
 
     fetchDashboardData();
-  }, [router]);
+  }, [router, supabase]);
 
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>Loading advanced analytics...</div>;

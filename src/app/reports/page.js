@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { BarChart3, TrendingUp, AlertCircle, PackageSearch, Download, DollarSign, Calendar, RefreshCcw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
 export default function ReportsPage() {
+  const supabase = createClient();
   const [loading, setLoading] = useState(true);
   
   // Custom Date Range
@@ -58,41 +59,52 @@ export default function ReportsPage() {
     const startDateTime = new Date(`${startDate}T00:00:00`).toISOString();
     const endDateTime = new Date(`${endDate}T23:59:59.999`).toISOString();
 
-    // 1. Fetch Transactions
+    // 1. Fetch Orders
     const { data: transData } = await supabase
-      .from('transaction')
+      .from('orders')
       .select(`
         *,
-        transaction_details (
-          PRODUCT_ID,
-          QTY,
-          UNIT_PRICE,
-          product (NAME, COST_PRICE, CATEGORY_ID, ON_HAND, category(CNAME))
+        order_items (
+          item_id,
+          quantity,
+          unit_price,
+          catalog_items (name, cost_price)
         )
       `)
-      .gte('CREATED_AT', startDateTime)
-      .lte('CREATED_AT', endDateTime);
+      .gte('created_at', startDateTime)
+      .lte('created_at', endDateTime);
 
-    // 2. Fetch All Products (for dead stock and total stock value)
+    // 2. Fetch All Items and Inventory Balances (for dead stock and stock value)
     const { data: prodData } = await supabase
-      .from('product')
-      .select(`*, category(CNAME)`);
+      .from('catalog_items')
+      .select(`id, name, cost_price, type`);
+
+    const { data: invData } = await supabase
+      .from('inventory_balances')
+      .select(`item_id, quantity`);
 
     let tSales = 0;
     let tCost = 0;
     let tCount = 0;
     
-    const productStats = {}; // { ID: { name, category, qty, revenue, profit } }
-    const catStats = {}; // { categoryName: revenue }
+    const productStats = {}; 
+    const catStats = {}; // Will use 'type' as category for now
     
-    // Process All Products mapping
-    const allProductsMap = {};
+    // Process inventory
+    const inventoryMap = {};
     let totalStockVal = 0;
+
+    if (invData) {
+      invData.forEach(i => {
+        if (!inventoryMap[i.item_id]) inventoryMap[i.item_id] = 0;
+        inventoryMap[i.item_id] += Number(i.quantity);
+      });
+    }
 
     if (prodData) {
       prodData.forEach(p => {
-        allProductsMap[p.PRODUCT_ID] = p;
-        totalStockVal += (Number(p.ON_HAND) || 0) * (Number(p.COST_PRICE) || 0);
+        const qty = inventoryMap[p.id] || 0;
+        totalStockVal += qty * (Number(p.cost_price) || 0);
       });
     }
 
@@ -100,25 +112,25 @@ export default function ReportsPage() {
       setRawTransactions(transData);
       transData.forEach(t => {
         tCount++;
-        const saleTotal = Number(t.ADJUSTED_TOTAL) || Number(t.GRAND_TOTAL) || 0;
+        const saleTotal = Number(t.grand_total) || 0;
         tSales += saleTotal;
 
-        if (t.transaction_details) {
-          t.transaction_details.forEach(d => {
-            const cost = Number(d.product?.COST_PRICE) || 0;
-            const price = Number(d.UNIT_PRICE) || 0;
-            const qty = Number(d.QTY) || 0;
+        if (t.order_items) {
+          t.order_items.forEach(d => {
+            const cost = Number(d.catalog_items?.cost_price) || 0;
+            const price = Number(d.unit_price) || 0;
+            const qty = Number(d.quantity) || 0;
             const rev = price * qty;
             const prof = (price - cost) * qty;
             
             tCost += (cost * qty);
 
-            const pId = d.PRODUCT_ID;
-            const cName = d.product?.category?.CNAME || 'Uncategorized';
+            const pId = d.item_id;
+            const cName = 'General'; // Generic label since categories aren't deeply nested yet
 
             if (!productStats[pId]) {
               productStats[pId] = { 
-                name: d.product?.NAME || 'Unknown Part', 
+                name: d.catalog_items?.name || 'Unknown Item', 
                 category: cName,
                 qty: 0, revenue: 0, profit: 0 
               };
@@ -143,12 +155,18 @@ export default function ReportsPage() {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
 
-    // Dead Stock (0 sales, ON_HAND > 10)
+    // Dead Stock (0 sales, qty > 10)
     const dead = [];
     if (prodData) {
       prodData.forEach(p => {
-        if (p.ON_HAND > 10 && !productStats[p.PRODUCT_ID]) {
-          dead.push(p);
+        const qty = inventoryMap[p.id] || 0;
+        if (qty > 10 && !productStats[p.id]) {
+          dead.push({
+            NAME: p.name,
+            ON_HAND: qty,
+            COST_PRICE: p.cost_price,
+            category: { CNAME: 'General' }
+          });
         }
       });
     }
@@ -236,10 +254,6 @@ export default function ReportsPage() {
             </>
           )}
 
-          <button className="btn btn-secondary" onClick={fetchAnalytics} title="Refresh">
-            <RefreshCcw size={16} />
-          </button>
-          
           <button className="btn btn-secondary" onClick={fetchAnalytics} title="Refresh">
             <RefreshCcw size={16} />
           </button>

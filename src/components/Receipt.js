@@ -1,31 +1,27 @@
 import React from 'react';
 
-export default function Receipt({ transaction, cart, subtotal, vat, grandTotal }) {
+export default function Receipt({ transaction, cart, subtotal, vat, grandTotal, tenant }) {
   if (!transaction) return null;
 
   // Extract dynamic metadata
-  const trxDate = transaction.CREATED_AT ? new Date(transaction.CREATED_AT) : new Date();
+  const trxDate = transaction.created_at ? new Date(transaction.created_at) : new Date();
   const dateStr = trxDate.toLocaleDateString();
   const timeStr = trxDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const cashierId = transaction.EMPLOYEE_ID ? `EMP-${transaction.EMPLOYEE_ID}` : 'Admin';
+  const cashierId = transaction.user_id ? `User-${transaction.user_id.split('-')[0]}` : 'Admin';
   
-  const paymentMethod = transaction.PAYMENT_METHOD || 'Cash';
-  const cashAmt = Number(transaction.CASH_AMOUNT) || 0;
-  const mpesaAmt = Number(transaction.MPESA_AMOUNT) || 0;
+  const paymentMethod = transaction.payment_method || 'Cash';
+  const cashAmt = Number(transaction.amount_paid) || 0;
   
-  // NOTE: DISCOUNT_AMOUNT in DB is negative for surcharge, positive for discount
-  const discountAmt = Number(transaction.DISCOUNT_AMOUNT) || 0;
+  const discountAmt = Number(transaction.discount_total) || 0;
   
-  const isCredit = transaction.IS_CREDIT;
-  const creditDueDate = transaction.CREDIT_DUE_DATE;
+  const isCredit = transaction.payment_status === 'unpaid';
 
   return (
     <div className="receipt-print-area">
       {/* 1. Brand & Header Block */}
       <div className="receipt-header">
-        <h2 className="receipt-store-name">JOBEA AUTO SPARES</h2>
-        <p className="receipt-store-meta">Nairobi, Kenya</p>
-        <p className="receipt-store-meta">Tel: +254 700 000 000</p>
+        <h2 className="receipt-store-name">{tenant?.name || 'Nexus SaaS'}</h2>
+        <p className="receipt-store-meta">Powered by Nexus</p>
       </div>
 
       <div className="receipt-divider" />

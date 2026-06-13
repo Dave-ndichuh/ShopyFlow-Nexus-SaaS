@@ -1,110 +1,93 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { Plus, Edit, Trash2, Search, X } from 'lucide-react';
+import { useAuth } from '@/components/AuthGuard';
+import { VendorService } from '@/lib/services/vendorService';
 
-export default function SuppliersPage() {
-  const [suppliers, setSuppliers] = useState([]);
+export default function VendorsPage() {
+  const { activeTenant } = useAuth();
+  const [supabase] = useState(() => createClient());
+
+  const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
+  // Modal State
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    COMPANY_NAME: '', PHONE_NUMBER: '', LOCATION_CITY: ''
+    name: '', contact_name: '', phone: '', email: '', address: ''
   });
 
-  const fetchSuppliers = async () => {
-      const { data, error } = await supabase
-        .from('supplier')
-        .select(`
-          *,
-          location(CITY, PROVINCE)
-        `)
-        .order('SUPPLIER_ID', { ascending: false });
-
-      if (!error && data) {
-        setSuppliers(data);
-      }
+  const fetchVendors = async () => {
+    if (!activeTenant) return;
+    setLoading(true);
+    try {
+      const data = await VendorService.getVendors(supabase, activeTenant.id);
+      setVendors(data || []);
+    } catch (err) {
+      console.error('Error fetching vendors:', err);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
   useEffect(() => {
-    fetchSuppliers();
-  }, []);
+    fetchVendors();
+  }, [activeTenant]);
 
-  const openModal = (supplier = null) => {
-    if (supplier) {
-      setEditingId(supplier.SUPPLIER_ID);
+  const handleDelete = async (id) => {
+    if (!confirm('Are you sure you want to delete this vendor?')) return;
+    try {
+      await VendorService.deleteVendor(supabase, id);
+      fetchVendors();
+    } catch (err) {
+      alert('Error deleting vendor: ' + err.message);
+    }
+  };
+
+  const openModal = (vendor = null) => {
+    if (vendor) {
+      setEditingId(vendor.id);
       setFormData({
-        COMPANY_NAME: supplier.COMPANY_NAME || '',
-        PHONE_NUMBER: supplier.PHONE_NUMBER || '',
-        LOCATION_CITY: supplier.location?.CITY || ''
+        name: vendor.name || '',
+        contact_name: vendor.contact_name || '',
+        phone: vendor.phone || '',
+        email: vendor.email || '',
+        address: vendor.address || ''
       });
     } else {
       setEditingId(null);
-      setFormData({ COMPANY_NAME: '', PHONE_NUMBER: '', LOCATION_CITY: '' });
+      setFormData({ 
+        name: '', contact_name: '', phone: '', email: '', address: ''
+      });
     }
     setShowModal(true);
   };
 
-  const saveSupplier = async (e) => {
+  const saveVendor = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    if (!activeTenant) return;
 
-    // Resolve or Create Location ID
-    let locId = null;
-    if (formData.LOCATION_CITY) {
-      const { data: existingLoc } = await supabase.from('location').select('LOCATION_ID').ilike('CITY', formData.LOCATION_CITY).maybeSingle();
-      if (existingLoc) {
-        locId = existingLoc.LOCATION_ID;
+    try {
+      if (editingId) {
+        await VendorService.updateVendor(supabase, editingId, formData);
       } else {
-        const { data: newLoc } = await supabase.from('location').insert([{ CITY: formData.LOCATION_CITY, PROVINCE: 'Custom' }]).select().single();
-        locId = newLoc?.LOCATION_ID || null;
+        await VendorService.createVendor(supabase, activeTenant.id, formData);
       }
-    }
-
-    const payload = {
-      COMPANY_NAME: formData.COMPANY_NAME,
-      PHONE_NUMBER: formData.PHONE_NUMBER,
-      LOCATION_ID: locId
-    };
-
-    let errorMsg = null;
-    if (editingId) {
-      const { error } = await supabase.from('supplier').update(payload).eq('SUPPLIER_ID', editingId);
-      if (error) errorMsg = error.message;
-    } else {
-      const { error } = await supabase.from('supplier').insert([payload]);
-      if (error) errorMsg = error.message;
-    }
-    
-    setLoading(false);
-    if (errorMsg) {
-      alert(`Database Error: ${errorMsg}`);
-      return;
-    }
-    
-    setShowModal(false);
-    fetchSuppliers();
-  };
-
-  const deleteSupplier = async (id) => {
-    if (confirm('Are you sure you want to delete this supplier?')) {
-      const { error } = await supabase.from('supplier').delete().eq('SUPPLIER_ID', id);
-      if (error) {
-        alert(`Delete Error: ${error.message}`);
-      } else {
-        setLoading(true);
-        fetchSuppliers();
-      }
+      setShowModal(false);
+      fetchVendors();
+    } catch (err) {
+      alert(`Database Error: ${err.message}`);
     }
   };
 
-  const filteredSuppliers = suppliers.filter(s => 
-    s.COMPANY_NAME?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.PHONE_NUMBER?.includes(searchTerm)
+  const filteredVendors = vendors.filter(v => 
+    v.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    v.contact_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    v.phone?.includes(searchTerm)
   );
 
   return (
@@ -114,7 +97,7 @@ export default function SuppliersPage() {
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
           <input 
             type="text" 
-            placeholder="Search suppliers..." 
+            placeholder="Search vendors..." 
             className="input" 
             style={{ paddingLeft: '2.5rem' }}
             value={searchTerm}
@@ -123,7 +106,7 @@ export default function SuppliersPage() {
         </div>
         <button className="btn btn-primary" onClick={() => openModal()}>
           <Plus size={18} />
-          Add Supplier
+          Add Vendor
         </button>
       </div>
 
@@ -131,35 +114,40 @@ export default function SuppliersPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Company Name</th>
-              <th>Phone Number</th>
-              <th>Location</th>
+              <th>Vendor Name</th>
+              <th>Contact Person</th>
+              <th>Contact Info</th>
+              <th>Address</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>Loading suppliers...</td>
+                <td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>Loading vendors...</td>
               </tr>
-            ) : filteredSuppliers.length === 0 ? (
+            ) : filteredVendors.length === 0 ? (
               <tr>
-                <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>No suppliers found.</td>
+                <td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No vendors found.</td>
               </tr>
             ) : (
-              filteredSuppliers.map((sup) => (
-                <tr key={sup.SUPPLIER_ID}>
-                  <td style={{ fontWeight: 500 }}>{sup.COMPANY_NAME}</td>
-                  <td className="text-muted">{sup.PHONE_NUMBER}</td>
+              filteredVendors.map((vendor) => (
+                <tr key={vendor.id}>
                   <td>
-                    {sup.location?.CITY ? `${sup.location.CITY}, ${sup.location.PROVINCE}` : 'N/A'}
+                    <div style={{ fontWeight: 600, color: 'var(--foreground)' }}>{vendor.name}</div>
                   </td>
+                  <td>{vendor.contact_name || 'N/A'}</td>
+                  <td>
+                    <div style={{ fontSize: '0.875rem' }}>{vendor.phone}</div>
+                    {vendor.email && <div style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>{vendor.email}</div>}
+                  </td>
+                  <td className="text-muted">{vendor.address || 'N/A'}</td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <button className="btn btn-secondary" style={{ padding: '0.5rem' }} title="Edit" onClick={() => openModal(sup)}>
+                      <button className="btn btn-secondary" style={{ padding: '0.5rem' }} title="Edit" onClick={() => openModal(vendor)}>
                         <Edit size={16} />
                       </button>
-                      <button className="btn btn-destructive" style={{ padding: '0.5rem' }} title="Delete" onClick={() => deleteSupplier(sup.SUPPLIER_ID)}>
+                      <button className="btn btn-destructive" style={{ padding: '0.5rem' }} title="Delete" onClick={() => handleDelete(vendor.id)}>
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -171,25 +159,32 @@ export default function SuppliersPage() {
         </table>
       </div>
 
+      {/* Modal Overlay */}
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '2rem' }}>
-          <div className="glass" style={{ width: '100%', maxWidth: '400px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
+          <div className="glass" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-              <h3 className="heading-2" style={{ margin: 0 }}>{editingId ? 'Edit Supplier' : 'Add Supplier'}</h3>
+              <h3 className="heading-2" style={{ margin: 0 }}>{editingId ? 'Edit Vendor' : 'Add Vendor'}</h3>
               <button onClick={() => setShowModal(false)}><X size={20} className="text-muted" /></button>
             </div>
             
-            <form onSubmit={saveSupplier} style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <form onSubmit={saveVendor} style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <input type="text" className="input" placeholder="Company Name" value={formData.COMPANY_NAME} onChange={e => setFormData({...formData, COMPANY_NAME: e.target.value})} required />
-                <input type="tel" className="input" placeholder="Phone Number" value={formData.PHONE_NUMBER} onChange={e => setFormData({...formData, PHONE_NUMBER: e.target.value})} required />
-                <input type="text" className="input" placeholder="Location City (e.g. Mombasa)" value={formData.LOCATION_CITY} onChange={e => setFormData({...formData, LOCATION_CITY: e.target.value})} required />
+                <input type="text" className="input" placeholder="Vendor Company Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
+                
+                <input type="text" className="input" placeholder="Contact Person Name" value={formData.contact_name} onChange={e => setFormData({...formData, contact_name: e.target.value})} />
+                
+                <input type="email" className="input" placeholder="Email Address" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                
+                <input type="tel" className="input" placeholder="Phone Number" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                
+                <textarea className="input" placeholder="Address..." rows={3} value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} style={{ resize: 'vertical' }} />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
                 <button type="button" className="btn btn-secondary" style={{ marginRight: '1rem' }} onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 2.5rem' }}>Save Supplier</button>
+                <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 2.5rem' }}>Save Vendor</button>
               </div>
             </form>
           </div>

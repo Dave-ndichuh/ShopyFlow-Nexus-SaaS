@@ -3,15 +3,16 @@
 import { usePathname } from 'next/navigation';
 import { User, Palette, Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { useTheme } from '@/context/ThemeContext';
 
 import { useAuth } from '@/components/AuthGuard';
 
 export default function Topbar() {
+  const supabase = createClient();
   const pathname = usePathname();
   const { theme, changeTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, activeTenant } = useAuth();
   const userEmail = user?.email || '';
 
   // Hide topbar on login pages
@@ -77,10 +78,12 @@ export default function Topbar() {
           </div>
         </div>
 
-        <div className="badge badge-success">Online</div>
+        <div className="badge badge-success" style={{ padding: '0.25rem 0.75rem', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>
+          {activeTenant ? activeTenant.name : 'No Tenant'}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'var(--card)', borderRadius: '99px', border: '1px solid var(--border)' }}>
           <User size={16} className="text-muted" />
-          <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{userEmail || 'Admin'}</span>
+          <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{userEmail || 'Guest'}</span>
         </div>
       </div>
     </header>

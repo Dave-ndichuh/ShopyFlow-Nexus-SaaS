@@ -224,11 +224,11 @@ export default function POSPage() {
               key={product.PRODUCT_ID}
               className="glass"
               style={{
-                padding: '1rem',
+                padding: '1.25rem',
                 textAlign: 'left',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '0.5rem',
+                gap: '0.75rem',
                 transition: 'transform 0.1s',
                 opacity: product.ON_HAND <= 0 ? 0.5 : 1,
                 cursor: product.ON_HAND <= 0 ? 'not-allowed' : 'pointer'
@@ -241,8 +241,8 @@ export default function POSPage() {
                   {product.ON_HAND <= 0 ? 'Out of Stock' : `Stock: ${product.ON_HAND}`}
                 </span>
               </div>
-              <div>
-                <h4 style={{ fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.25rem' }}>{product.NAME}</h4>
+              <div style={{ flex: 1 }}>
+                <h4 style={{ fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.25rem', lineHeight: '1.4' }}>{product.NAME}</h4>
                 {(product.BRAND || product.MODEL) && (
                   <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
                     {product.BRAND} {product.MODEL}
@@ -573,20 +573,20 @@ export default function POSPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {cart.map(item => (
-                <div key={item.PRODUCT_ID} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: 'var(--radius)' }}>
-                  <div style={{ flex: 1 }}>
-                    <h5 style={{ fontWeight: 500, fontSize: '0.95rem' }}>{item.NAME}</h5>
-                    <p className="text-muted" style={{ fontSize: '0.875rem' }}>Ksh. {item.PRICE.toLocaleString()}</p>
+                <div key={item.PRODUCT_ID} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ flex: 1, paddingRight: '1rem' }}>
+                    <h5 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.25rem', lineHeight: '1.3' }}>{item.NAME}</h5>
+                    <p className="text-muted" style={{ fontSize: '0.875rem', fontWeight: 500 }}>Ksh. {item.PRICE.toLocaleString()}</p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <button className="btn btn-secondary" style={{ padding: '0.25rem' }} onClick={() => updateQuantity(item.PRODUCT_ID, -1)}>
+                    <button className="btn btn-secondary" style={{ padding: '0.4rem' }} onClick={() => updateQuantity(item.PRODUCT_ID, -1)}>
                       <Minus size={14} />
                     </button>
-                    <span style={{ width: '24px', textAlign: 'center', fontWeight: 600 }}>{item.quantity}</span>
-                    <button className="btn btn-secondary" style={{ padding: '0.25rem' }} onClick={() => updateQuantity(item.PRODUCT_ID, 1)}>
+                    <span style={{ width: '28px', textAlign: 'center', fontWeight: 600 }}>{item.quantity}</span>
+                    <button className="btn btn-secondary" style={{ padding: '0.4rem' }} onClick={() => updateQuantity(item.PRODUCT_ID, 1)}>
                       <Plus size={14} />
                     </button>
-                    <button className="btn btn-destructive" style={{ padding: '0.25rem', marginLeft: '0.5rem' }} onClick={() => removeFromCart(item.PRODUCT_ID)}>
+                    <button className="btn btn-destructive" style={{ padding: '0.4rem', marginLeft: '0.5rem' }} onClick={() => removeFromCart(item.PRODUCT_ID)}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -596,35 +596,35 @@ export default function POSPage() {
           )}
         </div>
 
-        <div style={{ padding: '1.25rem', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border)' }}>
+        <div style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border)' }}>
           
           {/* Adjustments Section */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', alignItems: 'center' }}>
             <Tag size={16} className="text-muted" />
-            <span style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Adjust Price:</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', fontWeight: 500 }}>Adjust Price:</span>
             
             <div style={{ display: 'flex', alignItems: 'center', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
               <button 
                 className="btn btn-secondary" 
-                style={{ padding: '0 0.75rem', height: '32px', border: 'none', borderRight: '1px solid var(--border)', borderRadius: 0 }}
+                style={{ padding: '0 0.875rem', height: '36px', border: 'none', borderRight: '1px solid var(--border)', borderRadius: 0 }}
                 onClick={() => setDiscountAmount(prev => (Number(prev) || 0) - 100)}
               >
-                <Minus size={14} />
+                <Minus size={16} />
               </button>
               <input 
                 type="number" 
                 className="input" 
-                style={{ padding: '0.25rem 0.5rem', height: '32px', width: '80px', border: 'none', borderRadius: 0, textAlign: 'center', background: 'transparent' }} 
+                style={{ padding: '0.25rem 0.5rem', height: '36px', width: '90px', border: 'none', borderRadius: 0, textAlign: 'center', background: 'transparent', fontWeight: 600 }} 
                 value={discountAmount} 
                 onChange={(e) => setDiscountAmount(e.target.value)} 
                 placeholder="0"
               />
               <button 
                 className="btn btn-secondary" 
-                style={{ padding: '0 0.75rem', height: '32px', border: 'none', borderLeft: '1px solid var(--border)', borderRadius: 0 }}
+                style={{ padding: '0 0.875rem', height: '36px', border: 'none', borderLeft: '1px solid var(--border)', borderRadius: 0 }}
                 onClick={() => setDiscountAmount(prev => (Number(prev) || 0) + 100)}
               >
-                <Plus size={14} />
+                <Plus size={16} />
               </button>
             </div>
             
@@ -633,71 +633,77 @@ export default function POSPage() {
             </span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '1rem' }}>
             <span className="text-muted">Subtotal</span>
-            <span>Ksh. {subtotal.toLocaleString()}</span>
+            <span style={{ fontWeight: 500 }}>Ksh. {subtotal.toLocaleString()}</span>
           </div>
           {Number(discountAmount) !== 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.875rem', color: Number(discountAmount) < 0 ? '#10b981' : '#ef4444' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '1rem', color: Number(discountAmount) < 0 ? '#10b981' : '#ef4444', fontWeight: 500 }}>
               <span>{Number(discountAmount) < 0 ? 'Discount' : 'Surcharge'}</span>
               <span>{Number(discountAmount) < 0 ? '-' : '+'} Ksh. {Math.abs(Number(discountAmount)).toLocaleString()}</span>
             </div>
           )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem', marginTop: '0.5rem', fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed rgba(255,255,255,0.15)', fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.02em' }}>
             <span>Total</span>
             <span>Ksh. {grandTotal.toLocaleString()}</span>
           </div>
           
           {/* Payment Method Selector */}
-          <div className="btn-group-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
-            <button className={`btn ${paymentMethod === 'Cash' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('Cash')} style={{ padding: '0.5rem' }}>Cash</button>
-            <button className={`btn ${paymentMethod === 'M-Pesa' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('M-Pesa')} style={{ padding: '0.5rem', backgroundColor: paymentMethod === 'M-Pesa' ? '#25D366' : '' }}>M-Pesa</button>
-            <button className={`btn ${paymentMethod === 'Hybrid' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('Hybrid')} style={{ padding: '0.5rem' }}>Hybrid</button>
-            <button className={`btn ${paymentMethod === 'Credit' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('Credit')} style={{ padding: '0.5rem', backgroundColor: paymentMethod === 'Credit' ? '#f59e0b' : '' }}>Credit Sale</button>
+          <div className="btn-group-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+            <button className={`btn ${paymentMethod === 'Cash' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('Cash')} style={{ padding: '0.75rem' }}>Cash</button>
+            <button className={`btn ${paymentMethod === 'M-Pesa' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('M-Pesa')} style={{ padding: '0.75rem', backgroundColor: paymentMethod === 'M-Pesa' ? '#25D366' : '', color: paymentMethod === 'M-Pesa' ? '#fff' : '' }}>M-Pesa</button>
+            <button className={`btn ${paymentMethod === 'Hybrid' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('Hybrid')} style={{ padding: '0.75rem' }}>Hybrid</button>
+            <button className={`btn ${paymentMethod === 'Credit' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentMethod('Credit')} style={{ padding: '0.75rem', backgroundColor: paymentMethod === 'Credit' ? '#f59e0b' : '', color: paymentMethod === 'Credit' ? '#fff' : '' }}>Credit Sale</button>
           </div>
 
           {/* Conditional Inputs based on Method */}
           {paymentMethod === 'M-Pesa' && (
-            <input type="text" className="input" placeholder="M-Pesa Transaction Code" style={{ marginBottom: '1rem', border: '1px solid #25D366' }} value={mpesaReceipt} onChange={(e) => setMpesaReceipt(e.target.value)} />
+            <input type="text" className="input" placeholder="M-Pesa Transaction Code" style={{ marginBottom: '1.25rem', border: '2px solid #25D366', padding: '0.75rem' }} value={mpesaReceipt} onChange={(e) => setMpesaReceipt(e.target.value)} />
           )}
 
           {paymentMethod === 'Hybrid' && (
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem' }}>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>Cash Amt</label>
-                <input type="number" className="input" value={hybridCash} onChange={e => setHybridCash(e.target.value)} />
+                <label style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.25rem' }}>Cash Amount</label>
+                <input type="number" className="input" placeholder="0" style={{ padding: '0.75rem' }} value={hybridCash} onChange={e => setHybridCash(e.target.value)} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>M-Pesa Amt</label>
-                <input type="number" className="input" style={{ border: '1px solid #25D366' }} value={hybridMpesa} onChange={e => setHybridMpesa(e.target.value)} />
+                <label style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.25rem' }}>M-Pesa Amount</label>
+                <input type="number" className="input" placeholder="0" style={{ border: '2px solid #25D366', padding: '0.75rem' }} value={hybridMpesa} onChange={e => setHybridMpesa(e.target.value)} />
               </div>
             </div>
           )}
 
           {paymentMethod === 'Credit' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-              <select className="input" value={creditCustomerId} onChange={e => setCreditCustomerId(e.target.value)}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.25rem' }}>
+              <select className="input" style={{ padding: '0.75rem' }} value={creditCustomerId} onChange={e => setCreditCustomerId(e.target.value)}>
                 <option value="" disabled>Select Customer...</option>
                 {customers.map(c => <option key={c.CUST_ID} value={c.CUST_ID}>{c.FIRST_NAME} {c.LAST_NAME}</option>)}
               </select>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>Due Date</label>
-                  <input type="date" className="input" value={creditDueDate} onChange={e => setCreditDueDate(e.target.value)} />
+                  <label style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.25rem' }}>Due Date</label>
+                  <input type="date" className="input" style={{ padding: '0.75rem' }} value={creditDueDate} onChange={e => setCreditDueDate(e.target.value)} />
                 </div>
               </div>
-              <input type="text" className="input" placeholder="Terms / Notes..." value={creditTerms} onChange={e => setCreditTerms(e.target.value)} />
+              <input type="text" className="input" style={{ padding: '0.75rem' }} placeholder="Terms / Notes..." value={creditTerms} onChange={e => setCreditTerms(e.target.value)} />
             </div>
           )}
 
           {(paymentMethod === 'Hybrid' && Number(hybridMpesa) > 0) && (
-            <input type="text" className="input" placeholder="M-Pesa Transaction Code" style={{ marginBottom: '1rem', border: '1px solid #25D366' }} value={mpesaReceipt} onChange={(e) => setMpesaReceipt(e.target.value)} />
+            <input type="text" className="input" placeholder="M-Pesa Transaction Code" style={{ marginBottom: '1.25rem', border: '2px solid #25D366', padding: '0.75rem' }} value={mpesaReceipt} onChange={(e) => setMpesaReceipt(e.target.value)} />
           )}
 
           <button 
             className="btn btn-primary" 
-            style={{ width: '100%', padding: '1rem', fontSize: '1.125rem', 
-              backgroundColor: paymentMethod === 'M-Pesa' ? '#25D366' : paymentMethod === 'Credit' ? '#f59e0b' : 'var(--primary)' 
+            style={{ 
+              width: '100%', 
+              padding: '1.125rem', 
+              fontSize: '1.125rem', 
+              fontWeight: 700,
+              backgroundColor: paymentMethod === 'M-Pesa' ? '#25D366' : paymentMethod === 'Credit' ? '#f59e0b' : 'var(--primary)',
+              transition: 'background-color 0.2s, transform 0.1s',
+              color: '#fff'
             }}
             disabled={cart.length === 0 || checkingOut}
             onClick={checkout}

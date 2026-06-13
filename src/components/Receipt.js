@@ -3,70 +3,296 @@ import React from 'react';
 export default function Receipt({ transaction, cart, subtotal, vat, grandTotal }) {
   if (!transaction) return null;
 
+  // Extract dynamic metadata
+  const trxDate = transaction.CREATED_AT ? new Date(transaction.CREATED_AT) : new Date();
+  const dateStr = trxDate.toLocaleDateString();
+  const timeStr = trxDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const cashierId = transaction.EMPLOYEE_ID ? `EMP-${transaction.EMPLOYEE_ID}` : 'Admin';
+  
+  const paymentMethod = transaction.PAYMENT_METHOD || 'Cash';
+  const cashAmt = Number(transaction.CASH_AMOUNT) || 0;
+  const mpesaAmt = Number(transaction.MPESA_AMOUNT) || 0;
+  
+  // NOTE: DISCOUNT_AMOUNT in DB is negative for surcharge, positive for discount
+  const discountAmt = Number(transaction.DISCOUNT_AMOUNT) || 0;
+  
+  const isCredit = transaction.IS_CREDIT;
+  const creditDueDate = transaction.CREDIT_DUE_DATE;
+
   return (
-    <div className="receipt-print-area" style={{ display: 'none', background: 'white', color: 'black', width: '300px', padding: '20px', fontFamily: 'monospace' }}>
-      <div style={{ textAlign: 'center', borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '10px' }}>
-        <h2 style={{ margin: '0 0 5px 0', fontSize: '18px' }}>JOBEA AUTO SPARES</h2>
-        <p style={{ margin: 0, fontSize: '12px' }}>Nairobi, Kenya</p>
-        <p style={{ margin: 0, fontSize: '12px' }}>Tel: +254 700 000 000</p>
+    <div className="receipt-print-area">
+      {/* 1. Brand & Header Block */}
+      <div className="receipt-header">
+        <h2 className="receipt-store-name">JOBEA AUTO SPARES</h2>
+        <p className="receipt-store-meta">Nairobi, Kenya</p>
+        <p className="receipt-store-meta">Tel: +254 700 000 000</p>
       </div>
 
-      <div style={{ fontSize: '12px', marginBottom: '10px' }}>
-        <p style={{ margin: '2px 0' }}><strong>Receipt #:</strong> TRX-{transaction.TRANS_ID}</p>
-        <p style={{ margin: '2px 0' }}><strong>Date:</strong> {new Date().toLocaleString()}</p>
-        <p style={{ margin: '2px 0' }}><strong>Cashier:</strong> Admin</p>
-        <p style={{ margin: '2px 0' }}><strong>Payment:</strong> {transaction.PAYMENT_METHOD}</p>
+      <div className="receipt-divider" />
+
+      {/* 2. Metadata Block */}
+      <div className="receipt-meta">
+        <div className="meta-row">
+          <span>Receipt #:</span>
+          <span className="meta-val">TRX-{transaction.TRANS_ID}</span>
+        </div>
+        <div className="meta-row">
+          <span>Date:</span>
+          <span className="meta-val">{dateStr} {timeStr}</span>
+        </div>
+        <div className="meta-row">
+          <span>Cashier:</span>
+          <span className="meta-val">{cashierId}</span>
+        </div>
+        <div className="meta-row">
+          <span>Payment:</span>
+          <span className="meta-val">{paymentMethod}</span>
+        </div>
+        {isCredit && creditDueDate && (
+          <div className="meta-row">
+            <span>Due Date:</span>
+            <span className="meta-val">{new Date(creditDueDate).toLocaleDateString()}</span>
+          </div>
+        )}
       </div>
 
-      <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', marginBottom: '10px' }}>
+      <div className="receipt-divider" />
+
+      {/* 3. Items Block */}
+      <table className="receipt-items">
         <thead>
-          <tr style={{ borderBottom: '1px dashed black' }}>
-            <th style={{ textAlign: 'left', paddingBottom: '5px' }}>Item</th>
-            <th style={{ textAlign: 'center', paddingBottom: '5px' }}>Qty</th>
-            <th style={{ textAlign: 'right', paddingBottom: '5px' }}>Total</th>
+          <tr>
+            <th className="col-item">Item</th>
+            <th className="col-qty">Qty</th>
+            <th className="col-total">Total</th>
           </tr>
         </thead>
         <tbody>
           {cart.map((item, idx) => (
-            <tr key={idx}>
-              <td style={{ padding: '5px 0' }}>{item.NAME}</td>
-              <td style={{ textAlign: 'center' }}>{item.quantity}</td>
-              <td style={{ textAlign: 'right' }}>{(item.PRICE * item.quantity).toLocaleString()}</td>
+            <tr key={idx} className="item-row">
+              <td className="col-item">{item.NAME}</td>
+              <td className="col-qty">{item.quantity}</td>
+              <td className="col-total">{(item.PRICE * item.quantity).toLocaleString()}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      <div style={{ fontSize: '12px', borderTop: '1px dashed black', paddingTop: '10px', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-          <span>Subtotal:</span>
-          <span>Ksh {subtotal.toLocaleString()}</span>
+      <div className="receipt-divider" />
+
+      {/* 4. Totals Block */}
+      <div className="receipt-totals">
+        <div className="total-row">
+          <span>Subtotal</span>
+          <span>{subtotal.toLocaleString()}</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '5px' }}>
-          <span>Total:</span>
+
+        {discountAmt !== 0 && (
+          <div className="total-row">
+            <span>{discountAmt > 0 ? 'Discount' : 'Surcharge'}</span>
+            <span>{discountAmt > 0 ? '-' : '+'} {Math.abs(discountAmt).toLocaleString()}</span>
+          </div>
+        )}
+
+        {vat > 0 && (
+          <div className="total-row">
+            <span>VAT</span>
+            <span>{vat.toLocaleString()}</span>
+          </div>
+        )}
+
+        <div className="total-row grand-total">
+          <span>TOTAL</span>
           <span>Ksh {grandTotal.toLocaleString()}</span>
         </div>
       </div>
 
-      <div style={{ textAlign: 'center', fontSize: '12px' }}>
-        <p style={{ margin: 0 }}>Thank you for your business!</p>
-        <p style={{ margin: '5px 0 0 0' }}>Goods once sold are not returnable.</p>
+      {/* Optional Split Payment Details */}
+      {paymentMethod === 'Hybrid' && (
+        <div className="receipt-hybrid">
+          <div className="receipt-divider" />
+          <div className="meta-row">
+            <span>Paid via Cash:</span>
+            <span>{cashAmt.toLocaleString()}</span>
+          </div>
+          <div className="meta-row">
+            <span>Paid via M-Pesa:</span>
+            <span>{mpesaAmt.toLocaleString()}</span>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Footer Block */}
+      <div className="receipt-footer">
+        <p>Thank you for your business!</p>
+        <p>Goods once sold are not returnable.</p>
+        <p className="receipt-signature">www.jobeaauto.co.ke</p>
       </div>
 
       <style jsx global>{`
+        /* SCREEN PREVIEW - Hides receipt unless actively debugging */
+        .receipt-print-area {
+          position: absolute;
+          left: -9999px;
+          top: -9999px;
+          visibility: hidden;
+          display: block; 
+        }
+
+        /* PRINT STYLES - Thermal specific constraints */
         @media print {
+          @page {
+            margin: 0;
+            size: auto;
+          }
+
           body * {
             visibility: hidden;
           }
+          
+          body {
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
+          }
+
           .receipt-print-area, .receipt-print-area * {
             visibility: visible;
-            display: block !important;
           }
+          
           .receipt-print-area {
+            display: block !important;
             position: absolute;
             left: 0;
             top: 0;
-            width: 100% !important;
+            /* 80mm max width, degrades natively to 58mm via CSS */
+            width: 80mm; 
+            max-width: 100%;
+            padding: 2mm 4mm;
+            background: #fff;
+            color: #000;
+            font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.3;
+            box-sizing: border-box;
+          }
+
+          /* Header */
+          .receipt-header {
+            text-align: center;
+            margin-bottom: 3mm;
+          }
+          .receipt-store-name {
+            margin: 0 0 1mm 0;
+            font-size: 14pt;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+          }
+          .receipt-store-meta {
+            margin: 0;
+            font-size: 9pt;
+            color: #000;
+          }
+
+          /* Dividers */
+          .receipt-divider {
+            border-top: 1px dashed #000;
+            margin: 3mm 0;
+            width: 100%;
+          }
+
+          /* Metadata */
+          .receipt-meta {
+            font-size: 9pt;
+            margin-bottom: 3mm;
+          }
+          .meta-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1mm;
+          }
+          .meta-val {
+            font-weight: 600;
+            text-align: right;
+          }
+
+          /* Items Table */
+          .receipt-items {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10pt;
+            margin-bottom: 2mm;
+          }
+          .receipt-items th {
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 1.5mm;
+          }
+          .receipt-items td {
+            padding: 1.5mm 0;
+            vertical-align: top;
+          }
+          .item-row {
+            page-break-inside: avoid;
+          }
+          .col-item {
+            width: 60%;
+            padding-right: 2mm;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+          .col-qty {
+            width: 15%;
+            text-align: center;
+          }
+          .col-total {
+            width: 25%;
+            text-align: right;
+            font-weight: 600;
+          }
+
+          /* Totals */
+          .receipt-totals {
+            page-break-inside: avoid;
+            margin-top: 2mm;
+          }
+          .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1mm;
+            font-size: 10pt;
+          }
+          .grand-total {
+            font-size: 14pt;
+            font-weight: 800;
+            margin-top: 2mm;
+            padding-top: 2mm;
+            border-top: 2px solid #000; /* Solid line for explicit emphasis */
+          }
+
+          /* Hybrid */
+          .receipt-hybrid {
+            page-break-inside: avoid;
+            font-size: 9pt;
+            margin-top: 2mm;
+          }
+
+          /* Footer */
+          .receipt-footer {
+            text-align: center;
+            font-size: 9pt;
+            margin-top: 6mm;
+            page-break-inside: avoid;
+          }
+          .receipt-footer p {
+            margin: 0 0 1mm 0;
+          }
+          .receipt-signature {
+            margin-top: 2mm !important;
+            font-weight: 600;
+            font-size: 8pt;
           }
         }
       `}</style>

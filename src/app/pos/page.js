@@ -56,9 +56,20 @@ export default function POSPage() {
   const [discountAmount, setDiscountAmount] = useState(''); // positive is discount, negative is surcharge
   
   const [lastTransaction, setLastTransaction] = useState(null);
+  const [printData, setPrintData] = useState(null);
   const { employeeId } = useAuth();
   
   const [isMobile, setIsMobile] = useState(false);
+
+  // Auto-trigger print when printData is fully rendered
+  useEffect(() => {
+    if (printData) {
+      const timer = setTimeout(() => {
+        window.print();
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [printData]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 1024);
@@ -364,21 +375,27 @@ export default function POSPage() {
       alert(`Success! Transaction #${transData.TRANS_ID} completed.`);
       
       setLastTransaction(transData);
-      setTimeout(() => {
-        window.print();
-        // Reset
-        setCart([]);
-        setLastTransaction(null);
-        setMpesaReceipt('');
-        setHybridCash('');
-        setHybridMpesa('');
-        setCreditCustomerId('');
-        setCreditDueDate('');
-        setCreditTerms('');
-        setDiscountAmount('');
-        setSelectedCategory(null);
-        setIsMobileCartOpen(false);
-      }, 500);
+      
+      // Decouple the printed data from the active cart state
+      setPrintData({
+        transaction: transData,
+        cart: [...cart],
+        subtotal: subtotal,
+        grandTotal: grandTotal
+      });
+
+      // Reset Active POS
+      setCart([]);
+      setLastTransaction(null);
+      setMpesaReceipt('');
+      setHybridCash('');
+      setHybridMpesa('');
+      setCreditCustomerId('');
+      setCreditDueDate('');
+      setCreditTerms('');
+      setDiscountAmount('');
+      setSelectedCategory(null);
+      setIsMobileCartOpen(false);
 
       fetchData();
     } catch (err) {
@@ -722,13 +739,15 @@ export default function POSPage() {
         )}
       </AnimatePresence>
 
-      {/* Hidden Receipt for Printing */}
-      <Receipt 
-        transaction={lastTransaction} 
-        cart={cart} 
-        subtotal={subtotal} 
-        grandTotal={grandTotal} 
-      />
+      {/* Hidden Thermal Receipt */}
+      {printData && (
+        <Receipt 
+          transaction={printData.transaction} 
+          cart={printData.cart} 
+          subtotal={printData.subtotal} 
+          grandTotal={printData.grandTotal} 
+        />
+      )}
     </div>
   );
 }

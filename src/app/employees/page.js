@@ -140,13 +140,22 @@ export default function EmployeesPage() {
 
   const deleteEmployee = async (id) => {
     if (confirm('Are you sure you want to delete this employee?')) {
-      const { error } = await supabase.from('employee').delete().eq('EMPLOYEE_ID', id);
-      if (error) {
-        alert(`Delete Error: ${error.message}`);
-      } else {
-        setLoading(true);
-        fetchEmployees();
+      setLoading(true);
+      try {
+        const res = await fetch('/api/employees/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        
+        if (!res.ok) {
+          alert(`Delete Error: ${data.error}`);
+        }
+      } catch (err) {
+        alert(`Delete Error: ${err.message}`);
       }
+      fetchEmployees();
     }
   };
 

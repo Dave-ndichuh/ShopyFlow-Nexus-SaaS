@@ -19,6 +19,16 @@ export default function TransactionsPage() {
   
   const { role, employeeId } = useAuth();
 
+  // Auto-trigger print when printData is fully rendered
+  useEffect(() => {
+    if (printData) {
+      const timer = setTimeout(() => {
+        window.print();
+      }, 200); // Wait for React DOM and CSS to apply
+      return () => clearTimeout(timer);
+    }
+  }, [printData]);
+
   useEffect(() => {
     const fetchTransactions = async () => {
       let query = supabase
@@ -79,10 +89,6 @@ export default function TransactionsPage() {
       vat: trans.TAX_AMOUNT,
       grandTotal: trans.GRAND_TOTAL
     });
-
-    setTimeout(() => {
-      window.print();
-    }, 500);
   };
 
   return (

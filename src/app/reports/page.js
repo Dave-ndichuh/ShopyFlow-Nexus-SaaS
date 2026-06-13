@@ -5,7 +5,10 @@ import { createClient } from '@/utils/supabase/client';
 import { BarChart3, TrendingUp, AlertCircle, PackageSearch, Download, DollarSign, Calendar, RefreshCcw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
+import { useAuth } from '@/components/AuthGuard';
+
 export default function ReportsPage() {
+  const { activeBranch } = useAuth();
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   
@@ -59,7 +62,7 @@ export default function ReportsPage() {
     const startDateTime = new Date(`${startDate}T00:00:00`).toISOString();
     const endDateTime = new Date(`${endDate}T23:59:59.999`).toISOString();
 
-    // 1. Fetch Orders
+    // 1. Fetch Orders strictly for activeBranch
     const { data: transData } = await supabase
       .from('orders')
       .select(`
@@ -71,6 +74,7 @@ export default function ReportsPage() {
           catalog_items (name, cost_price)
         )
       `)
+      .eq('branch_id', activeBranch.id)
       .gte('created_at', startDateTime)
       .lte('created_at', endDateTime);
 
@@ -81,7 +85,8 @@ export default function ReportsPage() {
 
     const { data: invData } = await supabase
       .from('inventory_balances')
-      .select(`item_id, quantity`);
+      .select(`item_id, quantity`)
+      .eq('branch_id', activeBranch.id);
 
     let tSales = 0;
     let tCost = 0;
@@ -195,8 +200,10 @@ export default function ReportsPage() {
   };
 
   useEffect(() => {
-    fetchAnalytics();
-  }, [startDate, endDate]);
+    if (activeBranch) {
+      fetchAnalytics();
+    }
+  }, [startDate, endDate, activeBranch]);
 
   const exportCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,";

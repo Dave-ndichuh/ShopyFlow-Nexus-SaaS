@@ -19,6 +19,8 @@ export default function AuthProvider({ children }) {
   const [branches, setBranches] = useState([]);
   const [activeBranch, setActiveBranch] = useState(null);
   
+  const [activeRole, setActiveRole] = useState(null);
+  
   const [supabase] = useState(() => createClient());
 
   useEffect(() => {
@@ -65,6 +67,7 @@ export default function AuthProvider({ children }) {
         setActiveTenant(null);
         setBranches([]);
         setActiveBranch(null);
+        setActiveRole(null);
         router.push('/login');
       } else if (event === 'SIGNED_IN') {
         checkAuth();
@@ -76,24 +79,54 @@ export default function AuthProvider({ children }) {
     };
   }, [pathname, router]);
 
-  // Secondary effect: when activeTenant changes, fetch its branches
+  // Secondary effect: when activeTenant changes, fetch its context (branches & role)
   useEffect(() => {
-    if (!activeTenant) return;
+    if (!activeTenant || !user) return;
 
-    const fetchBranches = async () => {
-      const { data, error } = await supabase
+    const fetchContext = async () => {
+      // 1. Fetch user's role in this tenant
+      const { data: membership } = await supabase
+        .from('tenant_memberships')
+        .select('roles(name)')
+        .eq('tenant_id', activeTenant.id)
+        .eq('user_id', user.id)
+        .single();
+        
+      const roleName = membership?.roles?.name || 'Owner'; // Fallback to Owner for the initial creator
+      setActiveRole(roleName);
+
+      // 2. Fetch branches
+      let query = supabase
         .from('branches')
         .select('*')
         .eq('tenant_id', activeTenant.id)
         .eq('is_active', true)
         .order('name', { ascending: true });
+
+      // If Cashier (or not Owner/Admin/Manager), restrict to assigned branches
+      if (roleName === 'Cashier') {
+        const { data: userBranches } = await supabase
+          .from('user_branches')
+          .select('branch_id')
+          .eq('tenant_id', activeTenant.id)
+          .eq('user_id', user.id);
+          
+        if (userBranches && userBranches.length > 0) {
+          const allowedIds = userBranches.map(ub => ub.branch_id);
+          query = query.in('id', allowedIds);
+        } else {
+          // No assigned branches, force empty result
+          query = query.in('id', ['00000000-0000-0000-0000-000000000000']);
+        }
+      }
         
+      const { data, error } = await query;
       if (!error && data) {
         setBranches(data);
         if (data.length > 0) {
-          // If we already have an active branch from this tenant, keep it. Otherwise, set to the first one.
+          // If we already have an active branch from this tenant that is allowed, keep it
           setActiveBranch(prev => {
-            if (prev && prev.tenant_id === activeTenant.id) return prev;
+            if (prev && prev.tenant_id === activeTenant.id && data.some(b => b.id === prev.id)) return prev;
             return data[0];
           });
         } else {
@@ -102,8 +135,8 @@ export default function AuthProvider({ children }) {
       }
     };
 
-    fetchBranches();
-  }, [activeTenant]);
+    fetchContext();
+  }, [activeTenant, user]);
 
   if (loading) {
     return <div style={{ minHeight: '100vh', background: 'var(--background)' }} />;
@@ -128,7 +161,7 @@ export default function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, tenants, activeTenant, setActiveTenant, branches, activeBranch, setActiveBranch, loading, t }}>
+    <AuthContext.Provider value={{ user, tenants, activeTenant, setActiveTenant, branches, activeBranch, setActiveBranch, activeRole, loading, t }}>
       {children}
     </AuthContext.Provider>
   );

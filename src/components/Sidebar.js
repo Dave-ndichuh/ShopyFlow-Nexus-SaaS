@@ -24,7 +24,7 @@ import { useAuth } from '@/components/AuthGuard';
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, t, branches, activeBranch, setActiveBranch } = useAuth();
+  const { user, t, branches, activeBranch, setActiveBranch, activeRole } = useAuth();
   const [supabase] = useState(() => createClient());
 
   // Hide sidebar on login pages
@@ -47,10 +47,14 @@ export default function Sidebar() {
     { name: 'Inventory', path: '/inventory', icon: Boxes },
     { name: t('contacts'), path: '/customers', icon: Users },
     { name: t('vendors'), path: '/suppliers', icon: Truck },
-    { name: t('orders'), path: '/transactions', icon: FileText },
-    { name: 'Reports', path: '/reports', icon: BarChart3 },
-    { name: 'Settings', path: '/settings', icon: Settings },
+    { name: 'Purchases', path: '/purchases', icon: FileText },
+    { name: t('orders'), path: '/transactions', icon: FileText }
   ];
+
+  if (activeRole !== 'Cashier') {
+    navItems.push({ name: 'Reports', path: '/reports', icon: BarChart3 });
+    navItems.push({ name: 'Settings', path: '/settings', icon: Settings });
+  }
 
   return (
     <aside className="sidebar glass-panel">

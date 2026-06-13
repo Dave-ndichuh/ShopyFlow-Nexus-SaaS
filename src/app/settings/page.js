@@ -3,15 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthGuard';
 import { createClient } from '@/utils/supabase/client';
-import { Save, CreditCard, Settings2, Smartphone, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Save, CreditCard, Settings2, Smartphone, CheckCircle2, AlertCircle, Users as UsersIcon } from 'lucide-react';
 
 export default function SettingsPage() {
   const { activeTenant, setActiveTenant, t, branches: contextBranches } = useAuth();
   const supabase = createClient();
   
-  const [activeTab, setActiveTab] = useState('terminology'); // 'terminology' | 'billing'
+  const [activeTab, setActiveTab] = useState('terminology'); // 'terminology' | 'billing' | 'branches' | 'staff'
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  
+  const [roles, setRoles] = useState([]);
 
   // Terminology State
   const [industry, setIndustry] = useState('');
@@ -48,8 +50,14 @@ export default function SettingsPage() {
         pos_consumer_secret: activeTenant.pos_consumer_secret || ''
       });
       fetchSubscription();
+      fetchRoles();
     }
   }, [activeTenant]);
+
+  const fetchRoles = async () => {
+    const { data } = await supabase.from('roles').select('*');
+    if (data) setRoles(data);
+  };
 
   const fetchSubscription = async () => {
     if (!activeTenant) return;
@@ -138,6 +146,39 @@ export default function SettingsPage() {
     setLoading(false);
   };
 
+  const handleInviteStaff = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+    
+    const formData = new FormData(e.target);
+    const payload = {
+      email: formData.get('email'),
+      password: formData.get('password') || undefined,
+      role_id: formData.get('role_id'),
+      branch_ids: formData.getAll('branch_ids'), // gets multiple selects
+      tenant_id: activeTenant.id
+    };
+
+    try {
+      const res = await fetch('/api/staff/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Staff member invited successfully!' });
+        e.target.reset();
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Failed to invite staff.' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Network error during invitation.' });
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '800px', margin: '0 auto' }}>
       <h1 className="heading-1" style={{ margin: 0 }}>Workspace Settings</h1>
@@ -176,6 +217,17 @@ export default function SettingsPage() {
           }}
         >
           <Settings2 size={18} /> Branches
+        </button>
+        <button 
+          onClick={() => setActiveTab('staff')} 
+          style={{ 
+            background: 'none', border: 'none', padding: '0.5rem 1rem', fontSize: '1rem', fontWeight: 500, cursor: 'pointer',
+            color: activeTab === 'staff' ? 'var(--primary)' : 'var(--muted-foreground)',
+            borderBottom: activeTab === 'staff' ? '2px solid var(--primary)' : 'none',
+            display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap'
+          }}
+        >
+          <UsersIcon size={18} /> Staff
         </button>
       </div>
 
@@ -367,6 +419,48 @@ export default function SettingsPage() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Tab */}
+      {activeTab === 'staff' && (
+        <div className="glass animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div>
+            <h2 className="heading-2" style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Staff & Team Members</h2>
+            <p className="text-muted">Invite team members, assign roles, and manage branch access.</p>
+          </div>
+          
+          <div style={{ background: 'var(--card)', padding: '1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+            <h3 className="heading-3" style={{ marginBottom: '1rem' }}>Invite New Member</h3>
+            <form onSubmit={handleInviteStaff} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+              <div>
+                <label className="label">Email Address</label>
+                <input type="email" name="email" className="input" required />
+              </div>
+              <div>
+                <label className="label">Temporary Password</label>
+                <input type="password" name="password" className="input" placeholder="Optional" />
+              </div>
+              <div>
+                <label className="label">Role</label>
+                <select name="role_id" className="input" required>
+                  {roles.map(r => <option key={r.id} value={r.id}>{r.name} - {r.description}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Allowed Branches</label>
+                <select name="branch_ids" className="input" multiple style={{ height: 'auto', padding: '0.5rem' }} required>
+                  {contextBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+                <p className="text-muted" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Hold CTRL/CMD to select multiple. Cashiers MUST be assigned a branch.</p>
+              </div>
+              <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Inviting...' : 'Send Invitation'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

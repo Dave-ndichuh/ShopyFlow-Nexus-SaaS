@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, DollarSign, Activity, AlertTriangle, ShoppingCart } from 'lucide-react';
+import { TrendingUp, DollarSign, Activity, ShoppingCart, PackageOpen, Tag, BarChart3, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import MetricCard from '@/components/dashboard/MetricCard';
+import InsightCard from '@/components/dashboard/InsightCard';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -181,125 +183,181 @@ export default function Dashboard() {
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
-      {/* Row 1: Key Metrics (This Month) */}
+      <style jsx global>{`
+        .dashboard-grid {
+          display: grid;
+          grid-template-columns: repeat(12, 1fr);
+          gap: 1.5rem;
+        }
+        .col-3 { grid-column: span 3 / span 3; }
+        .col-4 { grid-column: span 4 / span 4; }
+        .col-8 { grid-column: span 8 / span 8; }
+        .col-12 { grid-column: span 12 / span 12; }
+
+        @media (max-width: 1024px) {
+          .dashboard-grid {
+            grid-template-columns: repeat(6, 1fr);
+          }
+          .col-3 { grid-column: span 3 / span 3; }
+          .col-4 { grid-column: span 6 / span 6; }
+          .col-8 { grid-column: span 6 / span 6; }
+        }
+
+        @media (max-width: 640px) {
+          .dashboard-grid {
+            grid-template-columns: 1fr;
+          }
+          .col-3, .col-4, .col-8, .col-12 { 
+            grid-column: span 1 / span 1; 
+          }
+        }
+      `}</style>
+
+      {/* Row 1: Executive KPIs */}
       <div>
-        <h2 className="heading-2" style={{ marginBottom: '1rem' }}>This Month's Performance</h2>
-        <div className="metrics-grid" style={{ display: 'grid', gap: '1.5rem' }}>
-          <div className="glass" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)', marginBottom: '0.5rem' }}>
-              <TrendingUp size={18} /> <span style={{ fontWeight: 500 }}>Total Sales</span>
-            </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--foreground)' }}>Ksh. {metrics.totalSales.toLocaleString()}</div>
+        <h2 className="heading-2" style={{ marginBottom: '1rem', fontSize: '1.25rem', color: 'var(--foreground)' }}>Executive Dashboard</h2>
+        <div className="dashboard-grid">
+          <div className="col-3">
+            <MetricCard 
+              title="Total Sales" 
+              icon={<TrendingUp size={18} />} 
+              value={`Ksh ${metrics.totalSales.toLocaleString()}`} 
+              subline="This month's revenue"
+              accentColor="#3b82f6"
+            />
           </div>
-          <div className="glass" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)', marginBottom: '0.5rem' }}>
-              <DollarSign size={18} /> <span style={{ fontWeight: 500 }}>Gross Profit</span>
-            </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#10b981' }}>Ksh. {metrics.grossProfit.toLocaleString()}</div>
+          <div className="col-3">
+            <MetricCard 
+              title="Gross Profit" 
+              icon={<DollarSign size={18} />} 
+              value={`Ksh ${metrics.grossProfit.toLocaleString()}`} 
+              subline="Before operating expenses"
+              accentColor="#10b981"
+            />
           </div>
-          <div className="glass" style={{ padding: '1.5rem', borderLeft: '4px solid #8b5cf6' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)', marginBottom: '0.5rem' }}>
-              <Activity size={18} /> <span style={{ fontWeight: 500 }}>Profit Margin</span>
-            </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#8b5cf6' }}>{metrics.profitMargin.toFixed(1)}%</div>
+          <div className="col-3">
+            <MetricCard 
+              title="Profit Margin" 
+              icon={<Activity size={18} />} 
+              value={`${metrics.profitMargin.toFixed(1)}%`} 
+              subline="Average yield per sale"
+              accentColor="#8b5cf6"
+            />
           </div>
-          <div className="glass" style={{ padding: '1.5rem', borderLeft: '4px solid #f59e0b' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted-foreground)', marginBottom: '0.5rem' }}>
-              <ShoppingCart size={18} /> <span style={{ fontWeight: 500 }}>Transactions</span>
-            </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f59e0b' }}>{metrics.transactionCount}</div>
+          <div className="col-3">
+            <MetricCard 
+              title="Transactions" 
+              icon={<ShoppingCart size={18} />} 
+              value={metrics.transactionCount.toLocaleString()} 
+              subline="Total closed orders"
+              accentColor="#f59e0b"
+            />
           </div>
         </div>
       </div>
 
-      {/* Row 2: Alerts & Quick Insights */}
+      {/* Row 2: Operational Insights */}
       <div>
-        <h2 className="heading-2" style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Quick Insights & Alerts</h2>
-        <div className="metrics-grid" style={{ display: 'grid', gap: '1.5rem' }}>
-          <div className="glass" style={{ padding: '1.25rem', borderBottom: metrics.lowStockCount > 0 ? '4px solid #ef4444' : '4px solid #10b981' }}>
-            <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Low Stock Items</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 600, color: metrics.lowStockCount > 0 ? '#ef4444' : '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {metrics.lowStockCount} {metrics.lowStockCount > 0 && <AlertTriangle size={16} />}
-            </div>
+        <h2 className="heading-2" style={{ marginBottom: '1rem', fontSize: '1.25rem', color: 'var(--foreground)' }}>Operational Insights</h2>
+        <div className="dashboard-grid">
+          <div className="col-3">
+            <InsightCard 
+              title="Low Stock Items"
+              value={metrics.lowStockCount.toLocaleString()}
+              context="Items with ≤ 5 units left"
+              status={metrics.lowStockCount > 0 ? 'danger' : 'success'}
+            />
           </div>
-          <div className="glass" style={{ padding: '1.25rem' }}>
-            <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Top Selling Product</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>
-              {metrics.topProduct.name} <span style={{ fontSize: '0.875rem', fontWeight: 'normal', color: 'var(--primary)' }}>({metrics.topProduct.qty} units)</span>
-            </div>
+          <div className="col-3">
+            <InsightCard 
+              title="Top Selling Product"
+              value={metrics.topProduct.name}
+              context={`${metrics.topProduct.qty} units sold this month`}
+              status="neutral"
+            />
           </div>
-          <div className="glass" style={{ padding: '1.25rem' }}>
-            <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Avg. Transaction Value</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>Ksh. {metrics.atv.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+          <div className="col-3">
+            <InsightCard 
+              title="Avg. Transaction Value"
+              value={`Ksh ${metrics.atv.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+              context="Average order size"
+              status="neutral"
+            />
           </div>
-          <div className="glass" style={{ padding: '1.25rem' }}>
-            <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Stock Value at Risk</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 600, color: '#f59e0b' }}>Ksh. {metrics.stockValue.toLocaleString()}</div>
+          <div className="col-3">
+            <InsightCard 
+              title="Stock Value at Risk"
+              value={`Ksh ${metrics.stockValue.toLocaleString()}`}
+              context="Total inventory valuation"
+              status="warning"
+            />
           </div>
         </div>
       </div>
 
       {/* Row 3: Visual Charts */}
-      <div className="charts-grid" style={{ display: 'grid', gap: '1.5rem', flex: 1, minHeight: '350px' }}>
-        <style jsx>{`
-          .metrics-grid { grid-template-columns: repeat(4, 1fr); }
-          .charts-grid { grid-template-columns: 2fr 1fr; }
-          @media (max-width: 1024px) {
-            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-            .charts-grid { grid-template-columns: 1fr; }
-          }
-          @media (max-width: 640px) {
-            .metrics-grid { grid-template-columns: 1fr; }
-          }
-        `}</style>
-        <div className="glass" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
-          <h3 className="heading-2" style={{ fontSize: '1.125rem', marginBottom: '1.5rem' }}>Sales Trend (Last 7 Days)</h3>
-          <div className="chart-container" style={{ flex: 1 }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <LineChart data={salesTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
-                <YAxis stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(value) => `${value / 1000}k`} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                  itemStyle={{ color: 'var(--foreground)' }}
-                  formatter={(value) => [`Ksh ${value.toLocaleString()}`, 'Sales']}
-                />
-                <Line type="monotone" dataKey="Sales" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4, fill: 'var(--primary)' }} activeDot={{ r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="glass" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
-          <h3 className="heading-2" style={{ fontSize: '1.125rem', marginBottom: '1.5rem' }}>Revenue by Payment Method</h3>
-          <div className="chart-container" style={{ flex: 1 }}>
-            {paymentData.length === 0 ? (
-              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted-foreground)' }}>No Data</div>
-            ) : (
+      <div>
+        <h2 className="heading-2" style={{ marginBottom: '1rem', fontSize: '1.25rem', color: 'var(--foreground)' }}>Performance Trends</h2>
+        <div className="dashboard-grid" style={{ minHeight: '350px' }}>
+          
+          <div className="col-8 glass" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--muted-foreground)' }}>
+              <BarChart3 size={18} className="text-primary" /> 
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sales Trend (Last 7 Days)</h3>
+            </div>
+            <div className="chart-container" style={{ flex: 1 }}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <PieChart>
-                  <Pie
-                    data={paymentData}
-                    cx="50%"
-                    cy="45%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {paymentData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
+                <LineChart data={salesTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} dy={10} />
+                  <YAxis stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(value) => `${value / 1000}k`} tickLine={false} axisLine={false} dx={-10} />
                   <Tooltip 
-                    formatter={(value) => `Ksh ${value.toLocaleString()}`}
-                    contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                    itemStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
+                    formatter={(value) => [`Ksh ${value.toLocaleString()}`, 'Sales']}
+                    cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '4 4' }}
                   />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                </PieChart>
+                  <Line type="monotone" dataKey="Sales" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: 'var(--background)' }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                </LineChart>
               </ResponsiveContainer>
-            )}
+            </div>
+          </div>
+
+          <div className="col-4 glass" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--muted-foreground)' }}>
+              <Tag size={18} className="text-primary" /> 
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Revenue by Payment</h3>
+            </div>
+            <div className="chart-container" style={{ flex: 1 }}>
+              {paymentData.length === 0 ? (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted-foreground)' }}>No Data</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <PieChart>
+                    <Pie
+                      data={paymentData}
+                      cx="50%"
+                      cy="45%"
+                      innerRadius={65}
+                      outerRadius={85}
+                      paddingAngle={5}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {paymentData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value) => `Ksh ${value.toLocaleString()}`}
+                      contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                      itemStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
+                    />
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </div>
       </div>

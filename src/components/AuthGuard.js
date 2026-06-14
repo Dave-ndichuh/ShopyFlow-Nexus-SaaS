@@ -52,6 +52,11 @@ export default function AuthProvider({ children }) {
         if (tenantData.length > 0) {
           const defaultTenant = tenantData[0];
           setActiveTenant(defaultTenant);
+        } else {
+          // No tenants found for this user, force onboarding
+          if (pathname !== '/onboarding') {
+            router.push('/onboarding');
+          }
         }
       }
 
@@ -143,6 +148,12 @@ export default function AuthProvider({ children }) {
   }
 
   if (!user && pathname !== '/login') return null;
+
+  // If authenticated but no active tenant, block rendering of protected app routes
+  // (unless they are on the onboarding page)
+  if (user && !activeTenant && pathname !== '/onboarding') {
+    return <div style={{ minHeight: '100vh', background: 'var(--background)' }} />;
+  }
 
   const t = (key) => {
     // Default fallback dictionary if nothing is set

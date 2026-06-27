@@ -30,7 +30,7 @@ export default function AuthProvider({ children }) {
       
       if (!session) {
         setUser(null);
-        if (pathname !== '/login' && pathname !== '/') {
+        if (pathname !== '/login' && pathname !== '/register' && pathname !== '/') {
           router.push('/login');
         }
         setLoading(false);
@@ -147,7 +147,7 @@ export default function AuthProvider({ children }) {
     return <div style={{ minHeight: '100vh', background: 'var(--background)' }} />;
   }
 
-  if (!user && pathname !== '/login' && pathname !== '/') return null;
+  if (!user && pathname !== '/login' && pathname !== '/register' && pathname !== '/') return null;
 
   // If authenticated but no active tenant, block rendering of protected app routes
   // (unless they are on the onboarding page)

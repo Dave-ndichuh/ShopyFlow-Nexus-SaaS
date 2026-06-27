@@ -808,3 +808,16 @@ button {
 .pricing-item-pro:hover .pricing-icon-custom {
   transform: scale(1.1) rotate(5deg);
 }
+
+/* Auth Pages Specific Styles */
+.auth-image-panel {
+  display: none !important;
+}
+@media (min-width: 1024px) {
+  .auth-image-panel {
+    display: flex !important;
+  }
+}
+
+.mobile-logo { display: block; }
+@media (min-width: 1024px) { .mobile-logo { display: none; } }

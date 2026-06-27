@@ -43,16 +43,7 @@ export default function LoginPage() {
       
       {/* Left Panel - Image/Brand */}
       <div style={{ flex: 1, display: 'none', '@media (minWidth: 1024px)': { display: 'flex' }, position: 'relative', overflow: 'hidden' }} className="auth-image-panel">
-        <style jsx>{`
-          .auth-image-panel {
-            display: none !important;
-          }
-          @media (min-width: 1024px) {
-            .auth-image-panel {
-              display: flex !important;
-            }
-          }
-        `}</style>
+
         
         {/* Background Image */}
         <div style={{ 
@@ -96,10 +87,7 @@ export default function LoginPage() {
         
         {/* Mobile Logo */}
         <div style={{ position: 'absolute', top: '2rem', left: '2rem' }} className="mobile-logo">
-          <style jsx>{`
-            .mobile-logo { display: block; }
-            @media (min-width: 1024px) { .mobile-logo { display: none; } }
-          `}</style>
+
           <Link href="/" style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.05em', color: '#0f172a', textDecoration: 'none' }}>
             Nexus
           </Link>

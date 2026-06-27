@@ -90,7 +90,7 @@ export default function LandingPage() {
                 </div>
                 <div className="col-lg-6">
                   <div className="right-image wow fadeInRight" data-wow-duration="1s" data-wow-delay="0.5s">
-                    <img src="assets/images/slider-dec.png" alt="" />
+                    <img src="assets/images/slider-dec.png" alt="" className="custom-illustration" />
                   </div>
                 </div>
               </div>
@@ -202,7 +202,7 @@ export default function LandingPage() {
             </div>
             <div className="col-lg-6">
               <div className="right-image">
-                <img src="assets/images/about-right-dec.png" alt="" />
+                <img src="assets/images/about-right-dec.png" alt="" className="custom-illustration" />
               </div>
             </div>
           </div>
@@ -224,7 +224,7 @@ export default function LandingPage() {
                 <span className="price">5,000 Ksh</span>
                 <h4>Starter Retail</h4>
                 <div className="icon">
-                  <img src="assets/images/pricing-table-01.png" alt="" />
+                  <img src="assets/images/pricing-table-01.png" alt="" className="pricing-icon-custom" />
                 </div>
                 <ul>
                   <li>1 Store Branch</li>
@@ -244,7 +244,7 @@ export default function LandingPage() {
                 <span className="price">15,000 Ksh</span>
                 <h4>Business Pro</h4>
                 <div className="icon">
-                  <img src="assets/images/pricing-table-01.png" alt="" />
+                  <img src="assets/images/pricing-table-01.png" alt="" className="pricing-icon-custom" />
                 </div>
                 <ul>
                   <li>Up to 5 Branches</li>
@@ -264,7 +264,7 @@ export default function LandingPage() {
                 <span className="price">30,000 Ksh</span>
                 <h4>Enterprise</h4>
                 <div className="icon">
-                  <img src="assets/images/pricing-table-01.png" alt="" />
+                  <img src="assets/images/pricing-table-01.png" alt="" className="pricing-icon-custom" />
                 </div>
                 <ul>
                   <li>Unlimited Branches</li>

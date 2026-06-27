@@ -79,7 +79,7 @@ export default function LandingPage() {
                       </div>
                       <div className="col-lg-12">
                         <div className="white-button first-button scroll-to-section">
-                          <Link href="/login">Create Workspace <i className="fa fa-rocket"></i></Link>
+                          <Link href="/register">Create Workspace <i className="fa fa-rocket"></i></Link>
                         </div>
                         <div className="white-button scroll-to-section">
                           <a href="#features">Explore Features <i className="fa fa-arrow-down"></i></a>
@@ -194,7 +194,7 @@ export default function LandingPage() {
                 <div className="col-lg-12">
                   <p>Nexus is designed not just as a point of sale, but as a complete operations engine for growing retail chains.</p>
                   <div className="gradient-button">
-                    <Link href="/login">Start 14-Day Free Trial</Link>
+                    <Link href="/register">Start 14-Day Free Trial</Link>
                   </div>
                   <span>*No Credit Card Required</span>
                 </div>
@@ -235,7 +235,7 @@ export default function LandingPage() {
                   <li>Priority Support</li>
                 </ul>
                 <div className="border-button">
-                  <Link href="/login">Get Started</Link>
+                  <Link href="/register?plan=starter">Get Started</Link>
                 </div>
               </div>
             </div>
@@ -255,7 +255,7 @@ export default function LandingPage() {
                   <li>Dedicated Account Manager</li>
                 </ul>
                 <div className="border-button">
-                  <Link href="/login">Get Started</Link>
+                  <Link href="/register?plan=business_pro">Get Started</Link>
                 </div>
               </div>
             </div>
@@ -275,7 +275,7 @@ export default function LandingPage() {
                   <li>24/7 Dedicated Support</li>
                 </ul>
                 <div className="border-button">
-                  <Link href="/login">Contact Sales</Link>
+                  <Link href="/register?plan=enterprise">Contact Sales</Link>
                 </div>
               </div>
             </div>

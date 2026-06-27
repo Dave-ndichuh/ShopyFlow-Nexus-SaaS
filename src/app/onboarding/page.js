@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Building2, Loader2, Briefcase } from 'lucide-react';
+import { Suspense } from 'react';
 
-export default function OnboardingPage() {
+function OnboardingForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const defaultPlan = searchParams.get('plan') || 'starter';
   const [supabase] = useState(() => createClient());
 
   useEffect(() => {
@@ -153,6 +156,7 @@ export default function OnboardingPage() {
             <div style={{ position: 'relative' }}>
               <select
                 name="plan_id"
+                defaultValue={defaultPlan}
                 style={{ paddingLeft: '1rem', height: '48px', width: '100%', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', outline: 'none', appearance: 'none' }}
                 required
               >
@@ -174,5 +178,13 @@ export default function OnboardingPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0f172a' }}></div>}>
+      <OnboardingForm />
+    </Suspense>
   );
 }

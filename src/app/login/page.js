@@ -2,29 +2,27 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, Loader2, UserCheck, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isLogin, setIsLogin] = useState(true);
   const router = useRouter();
   const [supabase] = useState(() => createClient());
 
-  const handleSubmit = async (formData) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
     setError(null);
+    
+    const formData = new FormData(e.target);
+    const email = formData.get('email');
+    const password = formData.get('password');
+    
     try {
-      const email = formData.get('email');
-      const password = formData.get('password');
-      
-      let result;
-      if (isLogin) {
-        result = await supabase.auth.signInWithPassword({ email, password });
-      } else {
-        result = await supabase.auth.signUp({ email, password });
-      }
+      const result = await supabase.auth.signInWithPassword({ email, password });
       
       if (result.error) {
         setError(result.error.message);
@@ -41,127 +39,143 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem',
-      backgroundColor: '#0f172a',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
-      <style jsx>{`
-        .login-box { padding: 3rem 2.5rem; }
-        @media (max-width: 640px) { .login-box { padding: 2rem 1.5rem; } }
-        
-        .floating-icon {
-          position: absolute;
-          color: rgba(255, 255, 255, 0.03);
-          z-index: 0;
-          animation: float linear infinite;
-        }
-        
-        @keyframes aurora {
-          0% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(5vw, -5vh) scale(1.1); }
-          66% { transform: translate(-5vw, 5vh) scale(0.9); }
-          100% { transform: translate(0, 0) scale(1); }
-        }
-      `}</style>
+    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: '#ffffff', fontFamily: '"Inter", sans-serif' }}>
       
-      {/* Professional Ambient Gradient Background */}
-      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0, pointerEvents: 'none' }}>
-        <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '60vw', height: '60vw', background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)', filter: 'blur(60px)', animation: 'aurora 20s ease-in-out infinite alternate' }} />
-        <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '70vw', height: '70vw', background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)', filter: 'blur(80px)', animation: 'aurora 25s ease-in-out infinite alternate-reverse' }} />
-        <div style={{ position: 'absolute', top: '40%', left: '50%', width: '50vw', height: '50vw', background: 'radial-gradient(circle, rgba(16,185,129,0.03) 0%, transparent 70%)', filter: 'blur(100px)', transform: 'translate(-50%, -50%)', animation: 'aurora 30s ease-in-out infinite alternate' }} />
-      </div>
-
-      <div className="glass animate-fade-in login-box" style={{
-        width: '100%',
-        maxWidth: '420px',
-        position: 'relative',
-        overflow: 'hidden',
-        boxShadow: '0 20px 40px -15px rgba(0,0,0,0.5)',
-        backgroundColor: 'rgba(30, 41, 59, 0.7)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        backdropFilter: 'blur(12px)',
-        borderRadius: '16px'
-      }}>
-        {/* Decorative glows */}
-        <div style={{ position: 'absolute', top: '-50px', left: '-50px', width: '150px', height: '150px', background: '#3b82f6', filter: 'blur(60px)', opacity: 0.3, borderRadius: '50%' }} />
-        <div style={{ position: 'absolute', bottom: '-50px', right: '-50px', width: '150px', height: '150px', background: '#10b981', filter: 'blur(60px)', opacity: 0.2, borderRadius: '50%' }} />
-
-        <div style={{ textAlign: 'center', marginBottom: '2.5rem', position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
-             <h1 style={{fontSize: '2.5rem', fontWeight: 'bold', color: 'white', letterSpacing: '-0.05em'}}>Nexus</h1>
-          </div>
-          <p style={{ fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.5)' }}>Business Operations Platform</p>
-        </div>
-
-        {error && (
-          <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#ef4444', fontSize: '0.875rem', textAlign: 'center', marginBottom: '1.5rem', position: 'relative' }}>
-            {error}
-          </div>
-        )}
-
-        <form action={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
+      {/* Left Panel - Image/Brand */}
+      <div style={{ flex: 1, display: 'none', '@media (minWidth: 1024px)': { display: 'flex' }, position: 'relative', overflow: 'hidden' }} className="auth-image-panel">
+        <style jsx>{`
+          .auth-image-panel {
+            display: none !important;
+          }
+          @media (min-width: 1024px) {
+            .auth-image-panel {
+              display: flex !important;
+            }
+          }
+        `}</style>
+        
+        {/* Background Image */}
+        <div style={{ 
+          position: 'absolute', inset: 0, 
+          backgroundImage: 'url(/assets/images/auth-bg.png)', 
+          backgroundSize: 'cover', 
+          backgroundPosition: 'center',
+          filter: 'contrast(1.1) saturate(1.2)'
+        }} />
+        
+        {/* Dark Gradient Overlay */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(15,23,42,0.8) 0%, rgba(30,58,138,0.6) 100%)' }} />
+        
+        <div style={{ position: 'relative', zIndex: 10, padding: '4rem', display: 'flex', flexDirection: 'column', height: '100%', color: 'white' }}>
+          <Link href="/" style={{ display: 'inline-block', fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.05em', color: 'white', textDecoration: 'none' }}>
+            Nexus
+          </Link>
           
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'white' }}>Email Address</label>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.5)' }}>
-                <Mail size={18} />
-              </div>
-              <input
-                type="email"
-                name="email"
-                style={{ paddingLeft: '2.5rem', height: '48px', width: '100%', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', outline: 'none' }}
-                placeholder="user@company.com"
-                required
-              />
-            </div>
+          <div style={{ marginTop: 'auto', marginBottom: 'auto' }}>
+            <h1 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.1, marginBottom: '1.5rem', textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+              Welcome back to your workspace.
+            </h1>
+            <p style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.8)', maxWidth: '480px', lineHeight: 1.6 }}>
+              Sign in to manage your inventory, sales, and analytics with Nexus.
+            </p>
           </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'white' }}>Password</label>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.5)' }}>
-                <Lock size={18} />
-              </div>
-              <input
-                type="password"
-                name="password"
-                style={{ paddingLeft: '2.5rem', height: '48px', width: '100%', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', outline: 'none' }}
-                placeholder="••••••••"
-                required
-              />
+          
+          <div style={{ marginTop: 'auto', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex' }}>
+              {[1,2,3,4,5].map(i => (
+                <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', marginRight: '4px' }} />
+              ))}
             </div>
+            <span style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>Trusted by 5,000+ businesses</span>
           </div>
+        </div>
+      </div>
 
-          <button 
-            type="submit" 
-            style={{ width: '100%', marginTop: '0.5rem', height: '48px', fontSize: '1rem', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-            disabled={loading}
-          >
-            {loading ? <Loader2 size={20} className="animate-spin" /> : (isLogin ? 'Sign In' : 'Create Account')}
-          </button>
-        </form>
-
-        <div style={{ zIndex: 10, position: 'relative', marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
-          <p style={{ fontSize: '0.875rem', marginBottom: '1rem', color: 'rgba(255,255,255,0.6)' }}>
-            {isLogin ? "Don't have an account?" : "Already have an account?"}
-          </p>
-          <button 
-            type="button" 
-            onClick={() => setIsLogin(!isLogin)}
-            style={{ width: '100%', height: '48px', color: 'white', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
-          >
-            <UserCheck size={18} /> {isLogin ? 'Create Account' : 'Sign In'} <ArrowRight size={16} />
-          </button>
+      {/* Right Panel - Form */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', position: 'relative' }}>
+        
+        {/* Mobile Logo */}
+        <div style={{ position: 'absolute', top: '2rem', left: '2rem' }} className="mobile-logo">
+          <style jsx>{`
+            .mobile-logo { display: block; }
+            @media (min-width: 1024px) { .mobile-logo { display: none; } }
+          `}</style>
+          <Link href="/" style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.05em', color: '#0f172a', textDecoration: 'none' }}>
+            Nexus
+          </Link>
         </div>
 
+        <div style={{ width: '100%', maxWidth: '400px' }}>
+          <div style={{ marginBottom: '2.5rem' }}>
+            <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem', letterSpacing: '-0.025em' }}>Welcome back</h2>
+            <p style={{ color: '#64748b', fontSize: '1rem' }}>Enter your credentials to access your workspace.</p>
+          </div>
+          
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {error && (
+              <div style={{ padding: '0.75rem', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#ef4444', fontSize: '0.875rem', textAlign: 'center' }}>
+                {error}
+              </div>
+            )}
+            
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1e293b' }}>Email Address</label>
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+                  <Mail size={18} />
+                </div>
+                <input
+                  type="email"
+                  name="email"
+                  style={{ paddingLeft: '3rem', height: '52px', width: '100%', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', color: '#0f172a', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', fontSize: '1rem' }}
+                  placeholder="user@company.com"
+                  required
+                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1e293b' }}>Password</label>
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+                  <Lock size={18} />
+                </div>
+                <input
+                  type="password"
+                  name="password"
+                  style={{ paddingLeft: '3rem', height: '52px', width: '100%', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', color: '#0f172a', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', fontSize: '1rem' }}
+                  placeholder="••••••••"
+                  required
+                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
+                />
+              </div>
+            </div>
+
+            <button 
+              type="submit" 
+              style={{ width: '100%', marginTop: '0.5rem', height: '52px', fontSize: '1rem', fontWeight: 600, background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', color: 'white', border: 'none', borderRadius: '99px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)', transition: 'all 0.2s' }}
+              disabled={loading}
+              onMouseOver={(e) => { if (!loading) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.5)'; } }}
+              onMouseOut={(e) => { if (!loading) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(59, 130, 246, 0.39)'; } }}
+            >
+              {loading ? <Loader2 size={20} className="animate-spin" /> : 'Sign In'}
+            </button>
+          </form>
+
+          <div style={{ marginTop: '2.5rem', textAlign: 'center' }}>
+            <p style={{ fontSize: '0.95rem', color: '#64748b' }}>
+              Don't have an account?{' '}
+              <Link href="/register" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+                Create one <ArrowRight size={14} style={{ display: 'inline', verticalAlign: 'middle', marginLeft: '2px' }} />
+              </Link>
+            </p>
+          </div>
+        </div>
       </div>
+
     </div>
   );
 }

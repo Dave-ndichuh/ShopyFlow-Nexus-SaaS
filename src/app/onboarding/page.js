@@ -54,7 +54,7 @@ export default function OnboardingPage() {
 
       // Success! Force a full page reload to the dashboard so AuthGuard runs from scratch
       // and picks up the new tenant_memberships
-      window.location.href = '/';
+      window.location.href = '/dashboard';
 
     } catch (err) {
       setError(err.message);

@@ -15,12 +15,12 @@ export default function Topbar() {
   const { user, activeTenant } = useAuth();
   const userEmail = user?.email || '';
 
-  // Hide topbar on login pages
-  if (pathname === '/login' || pathname === '/employee-login') return null;
+  // Hide topbar on landing and login pages
+  if (pathname === '/' || pathname === '/login' || pathname === '/employee-login') return null;
 
   // Format the title based on the path
   const getTitle = () => {
-    if (pathname === '/') return 'Overview';
+    if (pathname === '/dashboard') return 'Overview';
     return pathname.charAt(1).toUpperCase() + pathname.slice(2);
   };
 

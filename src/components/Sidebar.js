@@ -28,8 +28,8 @@ export default function Sidebar() {
   const { user, t, branches, activeBranch, setActiveBranch, activeRole } = useAuth();
   const [supabase] = useState(() => createClient());
 
-  // Hide sidebar on login pages
-  if (pathname === '/login') return null;
+  // Hide sidebar on landing and login pages
+  if (pathname === '/' || pathname === '/login') return null;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -42,7 +42,7 @@ export default function Sidebar() {
   };
 
   let navItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: t('pos'), path: '/pos', icon: ShoppingCart },
     { name: 'Shifts', path: '/shifts', icon: Wrench },
     { name: t('catalog'), path: '/products', icon: Package },

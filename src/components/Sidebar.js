@@ -13,7 +13,8 @@ import {
   LogOut,
   BarChart3,
   Wrench,
-  Boxes
+  Boxes,
+  TrendingDown
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -43,6 +44,7 @@ export default function Sidebar() {
   let navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: t('pos'), path: '/pos', icon: ShoppingCart },
+    { name: 'Shifts', path: '/shifts', icon: Wrench },
     { name: t('catalog'), path: '/products', icon: Package },
     { name: 'Inventory', path: '/inventory', icon: Boxes },
     { name: t('contacts'), path: '/customers', icon: Users },
@@ -52,6 +54,7 @@ export default function Sidebar() {
   ];
 
   if (activeRole !== 'Cashier') {
+    navItems.push({ name: 'Expenses', path: '/expenses', icon: TrendingDown });
     navItems.push({ name: 'Reports', path: '/reports', icon: BarChart3 });
     navItems.push({ name: 'Settings', path: '/settings', icon: Settings });
   }

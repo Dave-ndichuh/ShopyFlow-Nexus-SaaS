@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [metrics, setMetrics] = useState({
     totalSales: 0,
     grossProfit: 0,
+    netProfit: 0,
     profitMargin: 0,
     transactionCount: 0,
     atv: 0,
@@ -80,6 +81,7 @@ export default function Dashboard() {
 
         let tSales = 0;
         let tCost = 0;
+        let tExpenses = 0;
         let tCount = 0;
         const productSales = {};
         
@@ -129,8 +131,21 @@ export default function Dashboard() {
           });
         }
 
+        // Fetch expenses
+        const { data: expenses } = await supabase
+          .from('expenses')
+          .select('amount')
+          .gte('expense_date', firstDayOfMonth);
+
+        if (expenses) {
+          expenses.forEach(e => {
+            tExpenses += (Number(e.amount) || 0);
+          });
+        }
+
         const grossProfit = tSales - tCost;
-        const profitMargin = tSales > 0 ? (grossProfit / tSales) * 100 : 0;
+        const netProfit = grossProfit - tExpenses;
+        const profitMargin = tSales > 0 ? (netProfit / tSales) * 100 : 0;
         const atv = tCount > 0 ? tSales / tCount : 0;
 
         const topP = Object.values(productSales).sort((a, b) => b.qty - a.qty)[0] || { name: 'N/A', units: 0 };
@@ -149,6 +164,7 @@ export default function Dashboard() {
         setMetrics({
           totalSales: tSales,
           grossProfit,
+          netProfit,
           profitMargin,
           transactionCount: tCount,
           atv,
@@ -230,10 +246,10 @@ export default function Dashboard() {
           </div>
           <div className="col-3">
             <MetricCard 
-              title="Profit Margin" 
-              icon={<Activity size={18} />} 
-              value={`${metrics.profitMargin.toFixed(1)}%`} 
-              subline="Average yield per sale"
+              title="Net Profit" 
+              icon={<DollarSign size={18} />} 
+              value={`Ksh ${metrics.netProfit.toLocaleString()}`} 
+              subline="True bottom line"
               accentColor="#8b5cf6"
             />
           </div>

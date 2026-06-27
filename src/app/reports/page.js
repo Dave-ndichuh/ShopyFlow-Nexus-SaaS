@@ -20,6 +20,8 @@ export default function ReportsPage() {
   const [metrics, setMetrics] = useState({
     totalSales: 0,
     grossProfit: 0,
+    totalExpenses: 0,
+    netProfit: 0,
     profitMargin: 0,
     transactionCount: 0,
     atv: 0,
@@ -88,8 +90,17 @@ export default function ReportsPage() {
       .select(`item_id, quantity`)
       .eq('branch_id', activeBranch.id);
 
+    // 3. Fetch Expenses for the branch
+    const { data: expData } = await supabase
+      .from('expenses')
+      .select('amount')
+      .eq('branch_id', activeBranch.id)
+      .gte('expense_date', startDate)
+      .lte('expense_date', endDate);
+
     let tSales = 0;
     let tCost = 0;
+    let tExpenses = 0;
     let tCount = 0;
     
     const productStats = {}; 
@@ -151,8 +162,15 @@ export default function ReportsPage() {
       });
     }
 
+    if (expData) {
+      expData.forEach(e => {
+        tExpenses += (Number(e.amount) || 0);
+      });
+    }
+
     const grossProfit = tSales - tCost;
-    const profitMargin = tSales > 0 ? (grossProfit / tSales) * 100 : 0;
+    const netProfit = grossProfit - tExpenses;
+    const profitMargin = tSales > 0 ? (netProfit / tSales) * 100 : 0;
     const atv = tCount > 0 ? tSales / tCount : 0;
 
     // Top 10 Products by Revenue
@@ -187,6 +205,8 @@ export default function ReportsPage() {
     setMetrics({ 
       totalSales: tSales, 
       grossProfit, 
+      totalExpenses: tExpenses,
+      netProfit,
       profitMargin, 
       transactionCount: tCount,
       atv,
@@ -212,7 +232,9 @@ export default function ReportsPage() {
     csvContent += "Metric,Value\n";
     csvContent += `Total Sales (Ksh),${metrics.totalSales.toFixed(2)}\n`;
     csvContent += `Gross Profit (Ksh),${metrics.grossProfit.toFixed(2)}\n`;
-    csvContent += `Profit Margin (%),${metrics.profitMargin.toFixed(2)}%\n`;
+    csvContent += `Total Expenses (Ksh),${metrics.totalExpenses.toFixed(2)}\n`;
+    csvContent += `Net Profit (Ksh),${metrics.netProfit.toFixed(2)}\n`;
+    csvContent += `Net Profit Margin (%),${metrics.profitMargin.toFixed(2)}%\n`;
     csvContent += `Total Transactions,${metrics.transactionCount}\n\n`;
     
     csvContent += "Top 10 Products\n";
@@ -283,10 +305,10 @@ export default function ReportsPage() {
           {/* Metrics Cards */}
           <div className="reports-grid" style={{ display: 'grid', gap: '1rem' }}>
             <style jsx>{`
-              .reports-grid { grid-template-columns: repeat(6, 1fr); }
+              .reports-grid { grid-template-columns: repeat(4, 1fr); }
               .tables-grid { display: flex; gap: 2rem; }
               @media (max-width: 1024px) {
-                .reports-grid { grid-template-columns: repeat(3, 1fr); }
+                .reports-grid { grid-template-columns: repeat(2, 1fr); }
                 .tables-grid { flex-direction: column; }
               }
               @media (max-width: 640px) {
@@ -301,9 +323,17 @@ export default function ReportsPage() {
               <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Gross Profit</div>
               <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#10b981' }}>Ksh {(metrics.grossProfit/1000).toFixed(1)}k</div>
             </div>
+            <div className="glass" style={{ padding: '1.25rem', borderLeft: '3px solid #ef4444' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Expenses</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ef4444' }}>Ksh {(metrics.totalExpenses/1000).toFixed(1)}k</div>
+            </div>
             <div className="glass" style={{ padding: '1.25rem', borderLeft: '3px solid #8b5cf6' }}>
-              <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Profit Margin</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#8b5cf6' }}>{metrics.profitMargin.toFixed(1)}%</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Net Profit</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#8b5cf6' }}>Ksh {(metrics.netProfit/1000).toFixed(1)}k</div>
+            </div>
+            <div className="glass" style={{ padding: '1.25rem' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Net Margin</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{metrics.profitMargin.toFixed(1)}%</div>
             </div>
             <div className="glass" style={{ padding: '1.25rem' }}>
               <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Transactions</div>

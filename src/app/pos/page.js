@@ -9,9 +9,10 @@ import { CatalogService } from '@/lib/services/catalogService';
 import { ContactService } from '@/lib/services/contactService';
 import { OrderService } from '@/lib/services/orderService';
 import { InventoryService } from '@/lib/services/inventoryService';
+import { ShiftService } from '@/lib/services/shiftService';
 
 export default function POSPage() {
-  const { activeTenant, activeBranch } = useAuth();
+  const { activeTenant, activeBranch, user } = useAuth();
   const [supabase] = useState(() => createClient());
   const [loading, setLoading] = useState(true);
 
@@ -20,6 +21,10 @@ export default function POSPage() {
   const [categories, setCategories] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [inventory, setInventory] = useState([]);
+  const [activeShift, setActiveShift] = useState(null);
+  
+  // Shift Modal State
+  const [startingCash, setStartingCash] = useState('');
 
   // Cart & UI State
   const [cart, setCart] = useState([]);
@@ -49,7 +54,7 @@ export default function POSPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!activeTenant) return;
+      if (!activeTenant || !user) return;
       setLoading(true);
       try {
         const [catItems, cats, conts] = await Promise.all([
@@ -65,6 +70,9 @@ export default function POSPage() {
         if (activeBranch) {
           const inv = await InventoryService.getBalances(supabase, activeTenant.id, activeBranch.id);
           setInventory(inv || []);
+
+          const shift = await ShiftService.getActiveShift(supabase, activeTenant.id, activeBranch.id, user.id);
+          setActiveShift(shift);
         }
 
       } catch (err) {
@@ -74,7 +82,7 @@ export default function POSPage() {
       }
     };
     fetchData();
-  }, [activeTenant, activeBranch]);
+  }, [activeTenant, activeBranch, user]);
 
   const filteredItems = useMemo(() => {
     return items.filter(item => {
@@ -112,6 +120,18 @@ export default function POSPage() {
 
   const [mpesaPhone, setMpesaPhone] = useState('');
 
+  const handleOpenShift = async (e) => {
+    e.preventDefault();
+    if (!activeTenant || !activeBranch || !user) return;
+    
+    try {
+      const shift = await ShiftService.openShift(supabase, activeTenant.id, activeBranch.id, user.id, Number(startingCash) || 0);
+      setActiveShift(shift);
+    } catch (err) {
+      alert("Failed to open shift: " + err.message);
+    }
+  };
+
   const handleCheckout = async (e) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -126,9 +146,9 @@ export default function POSPage() {
       return;
     }
 
-    // Default status, if M-Pesa it will be updated by webhook later
     const orderData = {
       contact_id: selectedContact || null,
+      shift_id: activeShift.id,
       status: 'completed',
       subtotal: subtotal,
       discount_total: discount,
@@ -205,6 +225,41 @@ export default function POSPage() {
 
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>Loading POS System...</div>;
+  }
+
+  if (!activeShift) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 80px)' }} className="animate-fade-in">
+        <div className="glass" style={{ padding: '2rem', width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--card)' }}>
+          <div style={{ textAlign: 'center' }}>
+            <h2 className="heading-2" style={{ margin: 0, marginBottom: '0.5rem' }}>Open Register</h2>
+            <p className="text-muted" style={{ margin: 0 }}>You must open a shift to process sales.</p>
+          </div>
+          
+          <form onSubmit={handleOpenShift} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--muted-foreground)', marginBottom: '0.5rem' }}>
+                Starting Float (Cash in Drawer)
+              </label>
+              <input 
+                type="number" 
+                min="0"
+                className="input" 
+                placeholder="e.g. 5000" 
+                value={startingCash} 
+                onChange={e => setStartingCash(e.target.value)} 
+                required 
+                style={{ fontSize: '1.25rem', textAlign: 'center' }}
+              />
+            </div>
+            
+            <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem', fontSize: '1.1rem' }}>
+              Open Shift
+            </button>
+          </form>
+        </div>
+      </div>
+    );
   }
 
   return (

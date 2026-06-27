@@ -9,7 +9,7 @@ export async function POST(request) {
     );
 
     const body = await request.json();
-    const { user_id, business_name, industry } = body;
+    const { user_id, business_name, industry, plan_id } = body;
 
     if (!user_id || !business_name) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -29,13 +29,18 @@ export async function POST(request) {
       terminology = { contacts: 'Customers', catalog: 'Products', orders: 'Sales', vendors: 'Suppliers', pos: 'POS Terminal' };
     }
 
+    const selectedPlanId = plan_id || 'starter';
+    const subStatus = selectedPlanId === 'starter' ? 'active' : 'pending_payment';
+
     const { data: tenant, error: tenantError } = await supabaseAdmin
       .from('tenants')
       .insert([{ 
         name: business_name, 
         slug, 
         industry: industry || 'Generic',
-        terminology 
+        terminology,
+        plan_id: selectedPlanId,
+        subscription_status: subStatus
       }])
       .select()
       .single();

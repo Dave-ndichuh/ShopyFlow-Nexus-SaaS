@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/components/AuthGuard';
+import { hasFeature } from '@/lib/config/plans.config';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -55,7 +56,16 @@ export default function Sidebar() {
 
   if (activeRole !== 'Cashier') {
     navItems.push({ name: 'Expenses', path: '/expenses', icon: TrendingDown });
-    navItems.push({ name: 'Reports', path: '/reports', icon: BarChart3 });
+    
+    // Feature gate for Analytics/Reports
+    const canAccessAnalytics = hasFeature(activeTenant?.plan_id, 'analytics');
+    navItems.push({ 
+      name: 'Reports', 
+      path: canAccessAnalytics ? '/reports' : '/settings', // Redirect to settings if locked
+      icon: BarChart3, 
+      locked: !canAccessAnalytics 
+    });
+    
     navItems.push({ name: 'Settings', path: '/settings', icon: Settings });
   }
 
@@ -91,11 +101,12 @@ export default function Sidebar() {
             <Link 
               key={item.path} 
               href={item.path}
-              onClick={closeSidebar}
+              onClick={item.locked ? (e) => { e.preventDefault(); alert("This feature requires the Business Pro plan or higher. Please upgrade in Settings."); } : closeSidebar}
               className={`nav-item ${isActive ? 'active' : ''}`}
+              style={{ opacity: item.locked ? 0.6 : 1 }}
             >
               <Icon size={20} />
-              <span>{item.name}</span>
+              <span>{item.name} {item.locked && '🔒'}</span>
             </Link>
           );
         })}

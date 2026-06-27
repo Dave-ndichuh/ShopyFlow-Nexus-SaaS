@@ -221,7 +221,7 @@ export default function LandingPage() {
             </div>
             <div className="col-lg-4">
               <div className="pricing-item-regular">
-                <span className="price">$49</span>
+                <span className="price">5,000 Ksh</span>
                 <h4>Starter Retail</h4>
                 <div className="icon">
                   <img src="assets/images/pricing-table-01.png" alt="" />
@@ -230,9 +230,9 @@ export default function LandingPage() {
                   <li>1 Store Branch</li>
                   <li>Unlimited Products</li>
                   <li>Basic POS Checkouts</li>
-                  <li className="non-function">Shift Management</li>
-                  <li className="non-function">Net Profit Analytics</li>
-                  <li className="non-function">Priority Support</li>
+                  <li>Shift Management</li>
+                  <li>Net Profit Analytics</li>
+                  <li>Priority Support</li>
                 </ul>
                 <div className="border-button">
                   <Link href="/login">Get Started</Link>
@@ -241,7 +241,7 @@ export default function LandingPage() {
             </div>
             <div className="col-lg-4">
               <div className="pricing-item-pro">
-                <span className="price">$129</span>
+                <span className="price">15,000 Ksh</span>
                 <h4>Business Pro</h4>
                 <div className="icon">
                   <img src="assets/images/pricing-table-01.png" alt="" />
@@ -252,7 +252,7 @@ export default function LandingPage() {
                   <li>Advanced POS &amp; Inventory</li>
                   <li>Shift &amp; Cash Management</li>
                   <li>Net Profit Analytics</li>
-                  <li className="non-function">Dedicated Account Manager</li>
+                  <li>Dedicated Account Manager</li>
                 </ul>
                 <div className="border-button">
                   <Link href="/login">Get Started</Link>
@@ -261,7 +261,7 @@ export default function LandingPage() {
             </div>
             <div className="col-lg-4">
               <div className="pricing-item-regular">
-                <span className="price">$299</span>
+                <span className="price">30,000 Ksh</span>
                 <h4>Enterprise</h4>
                 <div className="icon">
                   <img src="assets/images/pricing-table-01.png" alt="" />

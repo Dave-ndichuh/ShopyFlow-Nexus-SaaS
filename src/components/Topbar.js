@@ -29,7 +29,13 @@ export default function Topbar() {
   };
 
   return (
-    <header className="topbar">
+    <>
+      {activeTenant?.subscription_status === 'pending_payment' && (
+        <div style={{ backgroundColor: 'var(--warning)', color: '#000', padding: '0.5rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600 }}>
+          Waiting for M-Pesa Confirmation. Some features are restricted until your payment clears.
+        </div>
+      )}
+      <header className="topbar">
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         {/* Hamburger Menu (visible only on small screens) */}
         <button 
@@ -87,5 +93,6 @@ export default function Topbar() {
         </div>
       </div>
     </header>
+    </>
   );
 }

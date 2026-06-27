@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useAuth } from '@/components/AuthGuard';
 import { ShiftService } from '@/lib/services/shiftService';
-import { Clock, DollarSign, LogOut, ArrowDownRight, ArrowUpRight, History } from 'lucide-react';
+import { Clock, DollarSign, LogOut, ArrowDownRight, ArrowUpRight, History, Lock } from 'lucide-react';
+import { hasFeature } from '@/lib/config/plans.config';
 
 export default function ShiftsPage() {
   const { activeTenant, activeBranch, user } = useAuth();
@@ -131,12 +132,25 @@ export default function ShiftsPage() {
                 </div>
 
                 <div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Cash Movements</h3>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                    <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setMovementType('pay_in'); setShowMovementModal(true); }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem' }}>
+                    Cash Movements 
+                    {!hasFeature(activeTenant?.plan_id, 'cash_management') && <span style={{ fontSize: '0.75rem', color: 'var(--warning)', marginLeft: '0.5rem' }}>(Pro Feature)</span>}
+                  </h3>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', opacity: !hasFeature(activeTenant?.plan_id, 'cash_management') ? 0.5 : 1 }}>
+                    <button 
+                      className="btn btn-secondary" 
+                      style={{ flex: 1 }} 
+                      onClick={() => { setMovementType('pay_in'); setShowMovementModal(true); }}
+                      disabled={!hasFeature(activeTenant?.plan_id, 'cash_management')}
+                    >
                       <ArrowDownRight size={16} className="text-success" /> Pay In
                     </button>
-                    <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setMovementType('pay_out'); setShowMovementModal(true); }}>
+                    <button 
+                      className="btn btn-secondary" 
+                      style={{ flex: 1 }} 
+                      onClick={() => { setMovementType('pay_out'); setShowMovementModal(true); }}
+                      disabled={!hasFeature(activeTenant?.plan_id, 'cash_management')}
+                    >
                       <ArrowUpRight size={16} className="text-destructive" /> Pay Out
                     </button>
                   </div>

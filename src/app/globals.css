@@ -84,6 +84,19 @@ button {
   font-family: inherit;
 }
 
+.landing-page {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Fix for long pricing text on the Chain App Dev template */
+.pricing-item-regular span.price,
+.pricing-item-pro span.price {
+  font-size: 22px !important;
+  left: 25px !important;
+  top: 35px !important;
+  text-shadow: 1px 1px 4px rgba(0,0,0,0.5);
+}
+
 /* Glassmorphism Utilities */
 .glass {
   background: var(--card);

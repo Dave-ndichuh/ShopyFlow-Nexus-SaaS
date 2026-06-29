@@ -85,7 +85,14 @@ export default function LandingPage() {
                 </div>
                 <div className="col-lg-6">
                   <div className="right-image wow fadeInRight" data-wow-duration="1s" data-wow-delay="0.5s">
-                    <img src="assets/images/slider-dec.png" alt="" className="custom-illustration" />
+                    <div className="hero-visual-card">
+                      <span className="hero-visual-badge">Live POS</span>
+                      <img src="/assets/images/slider-dec.png" alt="Nexus POS dashboard preview" className="custom-illustration" />
+                      <div className="hero-visual-caption">
+                        <strong>Unified control</strong>
+                        Checkout, stock, and analytics in one view
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -197,7 +204,14 @@ export default function LandingPage() {
             </div>
             <div className="col-lg-6">
               <div className="right-image">
-                <img src="assets/images/about-right-dec.png" alt="" className="custom-illustration" />
+                <div className="about-visual-card">
+                  <span className="about-visual-badge">Secure by design</span>
+                  <img src="/assets/images/about-right-dec.png" alt="Nexus multi-branch architecture preview" className="custom-illustration" />
+                  <div className="about-visual-caption">
+                    <strong>Multi-branch ready</strong>
+                    Roles, permissions, and data isolation built in
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -779,19 +779,140 @@ button {
 /* Custom Image Integrations */
 .custom-illustration {
   border-radius: 24px;
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 16px 40px -18px rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   transform: translateY(0);
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  background: white;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.9));
   width: 100%;
   max-width: 500px;
   display: block;
   margin: 0 auto;
 }
 .custom-illustration:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.25);
+  transform: translateY(-6px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 24px 50px -18px rgba(15, 23, 42, 0.45);
+}
+
+.hero-visual-card,
+.about-visual-card {
+  position: relative;
+  isolation: isolate;
+  padding: 1rem;
+  border-radius: 32px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 30px 70px -28px rgba(2, 8, 23, 0.55);
+  overflow: hidden;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.hero-visual-card::before,
+.about-visual-card::before {
+  content: '';
+  position: absolute;
+  inset: -20% auto auto -10%;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.28), transparent 70%);
+  filter: blur(18px);
+  z-index: -1;
+}
+
+.hero-visual-card::after,
+.about-visual-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+.hero-visual-card .custom-illustration,
+.about-visual-card .custom-illustration {
+  position: relative;
+  z-index: 1;
+  max-width: none;
+  min-height: 320px;
+  object-fit: contain;
+}
+
+.hero-visual-badge,
+.about-visual-badge {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8);
+  color: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: 0 12px 30px -15px rgba(15, 23, 42, 0.7);
+}
+
+.hero-visual-badge::before,
+.about-visual-badge::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.18);
+}
+
+.hero-visual-caption,
+.about-visual-caption {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 2;
+  max-width: 240px;
+  padding: 0.8rem 0.95rem;
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.78);
+  color: #f8fafc;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 20px 35px -18px rgba(2, 6, 23, 0.75);
+}
+
+.hero-visual-caption strong,
+.about-visual-caption strong {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+}
+
+@media (max-width: 768px) {
+  .hero-visual-card,
+  .about-visual-card {
+    padding: 0.75rem;
+    border-radius: 24px;
+  }
+
+  .hero-visual-card .custom-illustration,
+  .about-visual-card .custom-illustration {
+    min-height: 260px;
+  }
+
+  .hero-visual-caption,
+  .about-visual-caption {
+    position: static;
+    max-width: none;
+    margin-top: 0.8rem;
+  }
 }
 
 .pricing-icon-custom {

@@ -1,5 +1,6 @@
 import { ThemeProvider } from '@/context/ThemeContext';
 
+import '../globals.css';
 export default function AuthLayout({ children }) {
   return (
     <ThemeProvider>

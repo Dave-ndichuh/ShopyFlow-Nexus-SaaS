@@ -1,5 +1,3 @@
-import './globals.css';
-
 export const metadata = {
   title: 'Nexus POS | Retail Management SaaS',
   description: 'Premium Point of Sale and Multi-Branch Inventory Management System',

@@ -1,3 +1,4 @@
+import '../globals.css';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import { ThemeProvider } from '@/context/ThemeContext';

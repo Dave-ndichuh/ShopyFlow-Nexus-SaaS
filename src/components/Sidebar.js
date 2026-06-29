@@ -26,7 +26,7 @@ import { hasFeature } from '@/lib/config/plans.config';
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, t, branches, activeBranch, setActiveBranch, activeRole } = useAuth();
+  const { user, t, branches, activeBranch, setActiveBranch, activeRole, activeTenant } = useAuth();
   const [supabase] = useState(() => createClient());
 
   // Hide sidebar on landing, login, register, and onboarding pages

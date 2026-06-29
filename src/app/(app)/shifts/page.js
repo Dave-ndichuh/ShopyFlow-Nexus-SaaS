@@ -41,7 +41,7 @@ export default function ShiftsPage() {
       const hist = await ShiftService.getShiftHistory(supabase, activeTenant.id, activeBranch.id);
       setHistory(hist);
     } catch (err) {
-      console.error('Error fetching shift data', err);
+      console.error('Error fetching shift data:', err.message, err.details, err.hint, err);
     } finally {
       setLoading(false);
     }

@@ -81,20 +81,17 @@ export const ShiftService = {
   async getShiftHistory(supabase, tenantId, branchId) {
     const { data, error } = await supabase
       .from('shifts')
-      .select(`
-        *,
-        auth_users:user_id (email, raw_user_meta_data)
-      `)
+      .select('*')
       .eq('tenant_id', tenantId)
       .eq('branch_id', branchId)
       .order('opened_at', { ascending: false })
       .limit(50);
 
     if (error) throw error;
-    // Map auth_users to users (for consistency if needed)
-    return data.map(shift => ({
+    // Map gracefully without the join
+    return (data || []).map(shift => ({
       ...shift,
-      user_name: shift.auth_users?.raw_user_meta_data?.name || shift.auth_users?.email || 'Unknown'
+      user_name: shift.user_name || 'Cashier'
     }));
   },
 

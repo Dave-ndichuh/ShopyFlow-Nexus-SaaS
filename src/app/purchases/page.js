@@ -292,9 +292,7 @@ export default function PurchasesPage() {
                       <Plus size={16} className="text-primary" />
                     </div>
                   ))}
-                  <style jsx>{`
-                    .hover-bg:hover { background: rgba(0,0,0,0.1); }
-                  `}</style>
+
                 </div>
               </div>
 

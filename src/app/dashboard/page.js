@@ -192,35 +192,7 @@ export default function Dashboard() {
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
-      <style jsx global>{`
-        .dashboard-grid {
-          display: grid;
-          grid-template-columns: repeat(12, 1fr);
-          gap: 1.5rem;
-        }
-        .col-3 { grid-column: span 3 / span 3; }
-        .col-4 { grid-column: span 4 / span 4; }
-        .col-8 { grid-column: span 8 / span 8; }
-        .col-12 { grid-column: span 12 / span 12; }
 
-        @media (max-width: 1024px) {
-          .dashboard-grid {
-            grid-template-columns: repeat(6, 1fr);
-          }
-          .col-3 { grid-column: span 3 / span 3; }
-          .col-4 { grid-column: span 6 / span 6; }
-          .col-8 { grid-column: span 6 / span 6; }
-        }
-
-        @media (max-width: 640px) {
-          .dashboard-grid {
-            grid-template-columns: 1fr;
-          }
-          .col-3, .col-4, .col-8, .col-12 { 
-            grid-column: span 1 / span 1; 
-          }
-        }
-      `}</style>
 
       {/* Row 1: Executive KPIs */}
       <div>

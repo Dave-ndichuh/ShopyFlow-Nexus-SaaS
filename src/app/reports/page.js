@@ -290,11 +290,6 @@ export default function ReportsPage() {
           <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', whiteSpace: 'nowrap' }} onClick={exportCSV}>
             <Download size={16} /> <span className="hide-on-mobile">Export</span>
           </button>
-          <style jsx>{`
-            @media (max-width: 640px) {
-              .hide-on-mobile { display: none; }
-            }
-          `}</style>
         </div>
       </div>
 
@@ -304,17 +299,6 @@ export default function ReportsPage() {
         <>
           {/* Metrics Cards */}
           <div className="reports-grid" style={{ display: 'grid', gap: '1rem' }}>
-            <style jsx>{`
-              .reports-grid { grid-template-columns: repeat(4, 1fr); }
-              .tables-grid { display: flex; gap: 2rem; }
-              @media (max-width: 1024px) {
-                .reports-grid { grid-template-columns: repeat(2, 1fr); }
-                .tables-grid { flex-direction: column; }
-              }
-              @media (max-width: 640px) {
-                .reports-grid { grid-template-columns: 1fr; }
-              }
-            `}</style>
             <div className="glass" style={{ padding: '1.25rem', borderLeft: '3px solid var(--primary)' }}>
               <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Total Sales</div>
               <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>Ksh {(metrics.totalSales/1000).toFixed(1)}k</div>

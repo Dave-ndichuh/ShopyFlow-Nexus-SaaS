@@ -14,6 +14,22 @@
   --secondary: #1e293b;
   --secondary-foreground: #f8fafc;
   --muted: #334155;
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+
+:root {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card: rgba(30, 41, 59, 0.7);
+  --card-foreground: #f1f5f9;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --primary-hover: #2563eb;
+  --secondary: #1e293b;
+  --secondary-foreground: #f8fafc;
+  --muted: #334155;
   --muted-foreground: #94a3b8;
   --accent: #0ea5e9;
   --accent-foreground: #ffffff;
@@ -21,7 +37,7 @@
   --destructive-foreground: #ffffff;
   --border: rgba(255, 255, 255, 0.1);
   --ring: rgba(59, 130, 246, 0.5);
-  --radius: 12px;
+  --radius: 16px;
 }
 
 /* Ocean Theme */
@@ -992,6 +1008,97 @@ button {
 /* Mobile Menu Button */
 .mobile-menu-btn { display: none !important; }
 @media (max-width: 1024px) { .mobile-menu-btn { display: flex !important; } }
+
+/* =========================================
+   PREMIUM UI OVERHAUL (Overriding defaults)
+   ========================================= */
+
+/* Elevated Cards */
+.glass {
+  background: var(--card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3), 0 4px 10px -4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.glass:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 35px -10px rgba(0, 0, 0, 0.4), 0 6px 15px -4px rgba(0, 0, 0, 0.15);
+}
+
+/* Premium Inputs */
+.input {
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.input:focus {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Premium Tables */
+.table-wrapper {
+  background: var(--card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.table th {
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--foreground);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Sidebar Nav Enhancements */
+.sidebar-nav a {
+  border-radius: 10px;
+  margin: 0.25rem 1rem;
+  padding: 0.875rem 1.25rem;
+  transition: all 0.2s ease;
+  color: var(--muted-foreground);
+}
+
+.sidebar-nav a:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--foreground);
+}
+
+.sidebar-nav a.active {
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-hover) 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  font-weight: 500;
+}
+
+/* Typography Polish */
+h1, h2, h3, .heading-1, .heading-2, .heading-3 {
+  letter-spacing: -0.03em;
+}
 
 /* Receipt Print Styles */
         /* SCREEN PREVIEW - Hides receipt unless actively debugging */

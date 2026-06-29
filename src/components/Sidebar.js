@@ -29,9 +29,6 @@ export default function Sidebar() {
   const { user, t, branches, activeBranch, setActiveBranch, activeRole, activeTenant } = useAuth();
   const [supabase] = useState(() => createClient());
 
-  // Hide sidebar on landing, login, register, and onboarding pages
-  if (['/', '/login', '/register', '/onboarding'].includes(pathname)) return null;
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     document.body.classList.remove('sidebar-open');

@@ -15,9 +15,6 @@ export default function Topbar() {
   const { user, activeTenant } = useAuth();
   const userEmail = user?.email || '';
 
-  // Hide topbar on landing, auth, and onboarding pages
-  if (['/', '/login', '/employee-login', '/register', '/onboarding'].includes(pathname)) return null;
-
   // Format the title based on the path
   const getTitle = () => {
     if (pathname === '/dashboard') return 'Overview';

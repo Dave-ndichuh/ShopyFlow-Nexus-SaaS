@@ -5,8 +5,8 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import AuthProvider from '@/components/AuthGuard';
 
 export const metadata = {
-  title: 'Auto Spare Parts Management',
-  description: 'Premium Point of Sale and Inventory Management System',
+  title: 'Nexus POS | Retail Management SaaS',
+  description: 'Premium Point of Sale and Multi-Branch Inventory Management System',
 };
 
 export default function RootLayout({ children }) {

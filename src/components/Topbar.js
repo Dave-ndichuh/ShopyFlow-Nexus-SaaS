@@ -45,10 +45,7 @@ export default function Topbar() {
         >
           <Menu size={20} />
         </button>
-        <style jsx>{`
-          .mobile-menu-btn { display: none !important; }
-          @media (max-width: 1024px) { .mobile-menu-btn { display: flex !important; } }
-        `}</style>
+
 
         <h1 className="heading-2" style={{ margin: 0, color: 'var(--foreground)' }}>
           {getTitle()}

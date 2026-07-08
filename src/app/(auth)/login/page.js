@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
+import { getRootUrl } from '@/utils/domain';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -64,8 +65,7 @@ export default function LoginPage() {
           const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
           window.location.href = `${protocol}://${tenantData[0].slug}.${rootDomain}/dashboard`;
         } else {
-          router.push('/onboarding');
-          router.refresh();
+          window.location.href = getRootUrl('/onboarding');
         }
       }
     } catch (err) {
@@ -192,9 +192,9 @@ export default function LoginPage() {
           <div style={{ marginTop: '2.5rem', textAlign: 'center' }}>
             <p style={{ fontSize: '0.95rem', color: '#64748b' }}>
               Don't have an account?{' '}
-              <Link href="/register" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+              <a href={getRootUrl('/register')} style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
                 Create one <ArrowRight size={14} style={{ display: 'inline', verticalAlign: 'middle', marginLeft: '2px' }} />
-              </Link>
+              </a>
             </p>
           </div>
         </div>

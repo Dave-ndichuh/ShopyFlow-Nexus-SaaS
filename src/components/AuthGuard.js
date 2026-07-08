@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, usePathname, useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
+import { getRootUrl } from '@/utils/domain';
 
 const AuthContext = createContext({ user: null, tenants: [], activeTenant: null, loading: true });
 
@@ -33,7 +34,7 @@ export default function AuthProvider({ children }) {
       if (!session) {
         setUser(null);
         if (pathname !== '/login' && pathname !== '/register' && pathname !== '/') {
-          router.push('/login');
+          window.location.href = getRootUrl('/login');
         }
         setLoading(false);
         return;
@@ -73,7 +74,7 @@ export default function AuthProvider({ children }) {
         } else {
           // No tenants found for this user, force onboarding
           if (pathname !== '/onboarding') {
-            router.push('/onboarding');
+            window.location.href = getRootUrl('/onboarding');
           }
         }
       }
@@ -91,7 +92,7 @@ export default function AuthProvider({ children }) {
         setBranches([]);
         setActiveBranch(null);
         setActiveRole(null);
-        router.push('/login');
+        window.location.href = getRootUrl('/login');
       } else if (event === 'SIGNED_IN') {
         checkAuth();
       }

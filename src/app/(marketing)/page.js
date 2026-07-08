@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
+import { getRootUrl } from '@/utils/domain';
 
 export default function LandingPage() {
 
@@ -50,7 +51,7 @@ export default function LandingPage() {
 
                   <li>
                     <div className="gradient-button">
-                      <Link href="/login"><i className="fa fa-sign-in-alt"></i> Sign In Now</Link>
+                      <a href={getRootUrl('/login')}><i className="fa fa-sign-in-alt"></i> Sign In Now</a>
                     </div>
                   </li> 
                 </ul>        
@@ -79,7 +80,7 @@ export default function LandingPage() {
                       </div>
                       <div className="col-lg-12">
                         <div className="white-button first-button scroll-to-section">
-                          <Link href="/login">Create Workspace <i className="fa fa-rocket"></i></Link>
+                          <a href={getRootUrl('/login')}>Create Workspace <i className="fa fa-rocket"></i></a>
                         </div>
                         <div className="white-button scroll-to-section">
                           <a href="#features">Explore Features <i className="fa fa-arrow-down"></i></a>
@@ -194,7 +195,7 @@ export default function LandingPage() {
                 <div className="col-lg-12">
                   <p>Nexus is designed not just as a point of sale, but as a complete operations engine for growing retail chains.</p>
                   <div className="gradient-button">
-                    <Link href="/login">Start 14-Day Free Trial</Link>
+                    <a href={getRootUrl('/login')}>Start 14-Day Free Trial</a>
                   </div>
                   <span>*No Credit Card Required</span>
                 </div>

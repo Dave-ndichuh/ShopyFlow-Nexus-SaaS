@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import { getRootUrl } from '@/utils/domain';
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/components/AuthGuard';
@@ -32,7 +33,7 @@ export default function Sidebar() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     document.body.classList.remove('sidebar-open');
-    router.push('/login');
+    window.location.href = getRootUrl('/login');
   };
 
   const closeSidebar = () => {

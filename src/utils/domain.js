@@ -12,5 +12,14 @@ export const getRootDomain = () => {
 
 export const getCookieDomain = () => {
   const root = getRootDomain();
-  return root === 'localhost' ? 'localhost' : `.${root}`;
+  // Strip port if present (e.g., localhost:3000 -> localhost)
+  const hostname = root.split(':')[0];
+  
+  return hostname === 'localhost' ? 'localhost' : `.${hostname}`;
+};
+
+export const getRootUrl = (path = '') => {
+  const root = getRootDomain();
+  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+  return `${protocol}://${root}${path}`;
 };

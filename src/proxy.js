@@ -15,9 +15,17 @@ export async function proxy(req) {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || (process.env.NODE_ENV === 'development' ? 'localhost:3000' : 'nexussaas.com');
   
   let currentHost = hostname.replace(`.${rootDomain}`, '');
-  if (currentHost === rootDomain || currentHost === 'www') {
+  
+  // If the host is an IP address (e.g. 192.168.100.16) or starts with one, treat it as root
+  const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(hostname);
+
+  console.log(`[PROXY] URL: ${url.pathname}, Hostname: ${hostname}, isIpAddress: ${isIpAddress}, Initial currentHost: ${currentHost}`);
+
+  if (currentHost === rootDomain || currentHost === 'www' || isIpAddress) {
     currentHost = '';
   }
+
+  console.log(`[PROXY] Final currentHost: "${currentHost}"`);
 
   let supabaseResponse = NextResponse.next({ request: { headers: req.headers } });
 
@@ -47,11 +55,20 @@ export async function proxy(req) {
   }
 
   if (currentHost) {
-    if (!session && url.pathname !== '/login' && url.pathname !== '/register' && url.pathname !== '/onboarding') {
-      const loginUrl = new URL('/login', `http${process.env.NODE_ENV === 'development' ? '' : 's'}://${rootDomain}`);
+    // 1. Auth pages should always be strictly on the root domain.
+    // All client links have been updated to absolute URLs to prevent Next.js router from looping on these cross-origin redirects.
+    if (url.pathname === '/login' || url.pathname === '/register' || url.pathname === '/onboarding') {
+      const authUrl = new URL(url.pathname, `http${process.env.NODE_ENV === 'development' ? '' : 's'}://${rootDomain}`);
+      return NextResponse.redirect(authUrl);
+    }
+
+    // 2. Enforce authentication for the subdomain
+    if (!session) {
+      const loginUrl = new URL('/login', req.url);
       return NextResponse.redirect(loginUrl);
     }
 
+    // 3. Rewrite the path to /[tenant]/pathname
     const rewriteUrl = new URL(`/${currentHost}${url.pathname}${url.search}`, req.url);
     const finalResponse = NextResponse.rewrite(rewriteUrl);
     

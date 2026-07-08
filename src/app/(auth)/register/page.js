@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
+import { getRootUrl } from '@/utils/domain';
 
 function RegisterForm() {
   const [loading, setLoading] = useState(false);
@@ -40,8 +41,7 @@ function RegisterForm() {
         setLoading(false);
       } else {
         // Success
-        router.push('/onboarding');
-        router.refresh();
+        window.location.href = getRootUrl('/onboarding');
       }
     } catch (err) {
       setError(err.message);
@@ -175,9 +175,9 @@ export default function RegisterPage() {
           <div style={{ marginTop: '2.5rem', textAlign: 'center' }}>
             <p style={{ fontSize: '0.95rem', color: '#64748b' }}>
               Already have an account?{' '}
-              <Link href="/login" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+              <a href={getRootUrl('/login')} style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
                 Sign in <ArrowRight size={14} style={{ display: 'inline', verticalAlign: 'middle', marginLeft: '2px' }} />
-              </Link>
+              </a>
             </p>
           </div>
         </div>

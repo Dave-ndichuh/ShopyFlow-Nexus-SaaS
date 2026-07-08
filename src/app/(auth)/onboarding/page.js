@@ -54,9 +54,10 @@ function OnboardingForm() {
         throw new Error(result.error || 'Failed to create workspace');
       }
 
-      // Success! Force a full page reload to the dashboard so AuthGuard runs from scratch
-      // and picks up the new tenant_memberships
-      window.location.href = '/dashboard';
+      // Success! Redirect to their new subdomain
+      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || (process.env.NODE_ENV === 'development' ? 'localhost:3000' : 'nexussaas.com');
+      const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+      window.location.href = `${protocol}://${result.slug}.${rootDomain}/dashboard`;
 
     } catch (err) {
       setError(err.message);

@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
 const AuthContext = createContext({ user: null, tenants: [], activeTenant: null, loading: true });
@@ -11,6 +11,8 @@ export const useAuth = () => useContext(AuthContext);
 export default function AuthProvider({ children }) {
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams();
+  const tenantSlug = params.tenant;
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [tenants, setTenants] = useState([]);
@@ -49,10 +51,25 @@ export default function AuthProvider({ children }) {
 
       if (!tenantError && tenantData) {
         setTenants(tenantData);
-        // By default, select the first active tenant if none is selected
+        
         if (tenantData.length > 0) {
-          const defaultTenant = tenantData[0];
-          setActiveTenant(defaultTenant);
+          if (tenantSlug) {
+            // Find the exact tenant matching the subdomain
+            const matchedTenant = tenantData.find(t => t.slug === tenantSlug);
+            if (matchedTenant) {
+              setActiveTenant(matchedTenant);
+            } else {
+              // User doesn't have access to this subdomain!
+              const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || (process.env.NODE_ENV === 'development' ? 'localhost:3000' : 'nexussaas.com');
+              const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+              window.location.href = `${protocol}://${rootDomain}/login`;
+              return;
+            }
+          } else {
+            // No tenant slug provided (root domain). We shouldn't really be in AuthGuard if they hit a [tenant] route,
+            // but just in case, set to default.
+            setActiveTenant(tenantData[0]);
+          }
         } else {
           // No tenants found for this user, force onboarding
           if (pathname !== '/onboarding') {

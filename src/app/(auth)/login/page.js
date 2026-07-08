@@ -16,7 +16,21 @@ export default function LoginPage() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        router.push('/dashboard');
+        // Check subdomain and redirect if on root? 
+        // For simplicity, we just trigger the same logic if they hit /login while logged in
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('slug')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (tenantData && tenantData.length > 0) {
+          const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || (process.env.NODE_ENV === 'development' ? 'localhost:3000' : 'nexussaas.com');
+          const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+          window.location.href = `${protocol}://${tenantData[0].slug}.${rootDomain}/dashboard`;
+        } else {
+          router.push('/onboarding');
+        }
       }
     };
     checkSession();
@@ -38,9 +52,21 @@ export default function LoginPage() {
         setError(result.error.message);
         setLoading(false);
       } else {
-        // Success
-        router.push('/dashboard');
-        router.refresh();
+        // Success, now find their default tenant slug
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('slug')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (tenantData && tenantData.length > 0) {
+          const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || (process.env.NODE_ENV === 'development' ? 'localhost:3000' : 'nexussaas.com');
+          const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+          window.location.href = `${protocol}://${tenantData[0].slug}.${rootDomain}/dashboard`;
+        } else {
+          router.push('/onboarding');
+          router.refresh();
+        }
       }
     } catch (err) {
       setError(err.message);

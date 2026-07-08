@@ -15,10 +15,28 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // 1. Create the Tenant
-    // Generate a simple slug from the business name
-    const slug = business_name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.floor(Math.random() * 10000);
+    // 1. Generate a Clean, Unique Slug
+    let baseSlug = business_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (!baseSlug) baseSlug = 'workspace';
     
+    let slug = baseSlug;
+    let counter = 1;
+    let isUnique = false;
+
+    while (!isUnique) {
+      const { data: existing } = await supabaseAdmin
+        .from('tenants')
+        .select('id')
+        .eq('slug', slug)
+        .maybeSingle();
+        
+      if (existing) {
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+      } else {
+        isUnique = true;
+      }
+    }
     // Set up terminology based on industry
     let terminology = { contacts: 'Contacts', catalog: 'Catalog', orders: 'Orders', vendors: 'Vendors', pos: 'Sales / POS' };
     if (industry === 'Healthcare') {
@@ -97,7 +115,7 @@ export async function POST(request) {
 
     if (branchError) throw new Error('Branch creation failed: ' + branchError.message);
 
-    return NextResponse.json({ success: true, tenant_id: tenant.id, message: 'Workspace created successfully!' });
+    return NextResponse.json({ success: true, tenant_id: tenant.id, slug: tenant.slug, message: 'Workspace created successfully!' });
 
   } catch (error) {
     console.error('Provisioning Error:', error);

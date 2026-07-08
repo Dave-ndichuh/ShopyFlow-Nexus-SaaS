@@ -3,6 +3,7 @@ import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import { ThemeProvider } from '@/context/ThemeContext';
 import AuthProvider from '@/components/AuthGuard';
+import InstallPrompt from '@/components/InstallPrompt';
 
 export default function AppLayout({ children }) {
   return (
@@ -16,6 +17,7 @@ export default function AppLayout({ children }) {
               {children}
             </main>
           </div>
+          <InstallPrompt />
         </div>
       </AuthProvider>
     </ThemeProvider>

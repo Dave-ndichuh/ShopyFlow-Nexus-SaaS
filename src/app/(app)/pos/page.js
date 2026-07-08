@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { ShoppingCart, Plus, Minus, Trash2, User, Search, CreditCard, Receipt as ReceiptIcon, X } from 'lucide-react';
-import Receipt from '@/components/Receipt';
+import ThermalInvoice from '@/components/ThermalInvoice';
 import { useAuth } from '@/components/AuthGuard';
 import { CatalogService } from '@/lib/services/catalogService';
 import { ContactService } from '@/lib/services/contactService';
@@ -470,12 +470,20 @@ export default function POSPage() {
       )}
 
       {printData && (
-        <Receipt 
-          transaction={printData.transaction} 
-          cart={printData.cart} 
-          subtotal={printData.subtotal} 
-          vat={printData.vat} 
-          grandTotal={printData.grandTotal} 
+        <ThermalInvoice 
+          invoice={{
+            ...printData.transaction,
+            CUSTOMER_NAME: contacts.find(c => c.id === printData.transaction.contact_id)?.first_name || 'Walk-in',
+            TRANS_ID: printData.transaction.id,
+            SUBTOTAL: printData.subtotal,
+            GRAND_TOTAL: printData.grandTotal,
+            CREATED_AT: printData.transaction.created_at
+          }}
+          items={printData.cart.map(c => ({
+            DESCRIPTION: c.NAME,
+            QTY: c.quantity,
+            TOTAL_PRICE: c.PRICE * c.quantity
+          }))}
           tenant={printData.tenant}
         />
       )}

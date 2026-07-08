@@ -268,7 +268,7 @@ export default function InvoicesPage() {
 
       <div className="hide-on-print" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-      <div style={{ display: 'flex', justify-content: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="heading-2" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <FileText size={28} className="text-primary" />
           Invoices & Quotations

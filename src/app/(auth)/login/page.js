@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
@@ -11,6 +11,16 @@ export default function LoginPage() {
   const [error, setError] = useState(null);
   const router = useRouter();
   const [supabase] = useState(() => createClient());
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.push('/dashboard');
+      }
+    };
+    checkSession();
+  }, [supabase, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -12,7 +12,6 @@ function OnboardingForm() {
   const [user, setUser] = useState(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const defaultPlan = searchParams.get('plan') || 'starter';
   const [supabase] = useState(() => createClient());
 
   useEffect(() => {
@@ -37,7 +36,6 @@ function OnboardingForm() {
     const formData = new FormData(e.target);
     const businessName = formData.get('business_name');
     const industry = formData.get('industry');
-    const planId = formData.get('plan_id');
 
     try {
       const res = await fetch('/api/tenant/provision', {
@@ -46,8 +44,7 @@ function OnboardingForm() {
         body: JSON.stringify({
           user_id: user.id,
           business_name: businessName,
-          industry: industry,
-          plan_id: planId
+          industry: industry
         })
       });
 
@@ -151,21 +148,7 @@ function OnboardingForm() {
             <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.5rem' }}>We'll automatically configure terminology based on your industry.</p>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'white' }}>Select Pricing Plan</label>
-            <div style={{ position: 'relative' }}>
-              <select
-                name="plan_id"
-                defaultValue={defaultPlan}
-                style={{ paddingLeft: '1rem', height: '48px', width: '100%', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', outline: 'none', appearance: 'none' }}
-                required
-              >
-                <option value="starter" style={{ color: '#0f172a' }}>Starter Retail (1 Branch) - 5,000 Ksh</option>
-                <option value="business_pro" style={{ color: '#0f172a' }}>Business Pro (Up to 5 Branches) - 15,000 Ksh</option>
-                <option value="enterprise" style={{ color: '#0f172a' }}>Enterprise (Unlimited Branches) - 30,000 Ksh</option>
-              </select>
-            </div>
-          </div>
+
 
           <button 
             type="submit" 

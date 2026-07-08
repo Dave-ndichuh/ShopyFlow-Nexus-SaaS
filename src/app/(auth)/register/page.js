@@ -12,7 +12,16 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [supabase] = useState(() => createClient());
-  const plan = searchParams.get('plan');
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.push('/dashboard');
+      }
+    };
+    checkSession();
+  }, [supabase, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,11 +40,7 @@ function RegisterForm() {
         setLoading(false);
       } else {
         // Success
-        if (plan) {
-          router.push(`/onboarding?plan=${plan}`);
-        } else {
-          router.push('/onboarding');
-        }
+        router.push('/onboarding');
         router.refresh();
       }
     } catch (err) {

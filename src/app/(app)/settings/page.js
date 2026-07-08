@@ -37,10 +37,7 @@ export default function SettingsPage() {
   
   const [subscription, setSubscription] = useState(null);
   
-  // Downgrade Modal State
-  const [showDowngradeModal, setShowDowngradeModal] = useState(false);
-  const [targetPlan, setTargetPlan] = useState(null);
-  const [branchesToDeactivate, setBranchesToDeactivate] = useState([]);
+
 
   useEffect(() => {
     if (activeTenant) {
@@ -127,89 +124,9 @@ export default function SettingsPage() {
     setLoading(false);
   };
 
-  const initiateSaaSSTKPush = async (e) => {
-    e.preventDefault();
-    const phone = e.target.phone.value;
-    if (!phone) return;
-    
-    setLoading(true);
-    setMessage({ type: '', text: '' });
-    try {
-      const res = await fetch('/api/billing/mpesa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, amount: 2000, type: 'SaaS', tenant_id: activeTenant.id })
-      });
-      const result = await res.json();
-      if (res.ok) {
-        setMessage({ type: 'success', text: 'STK Push sent! Please check your phone to complete the payment.' });
-      } else {
-        setMessage({ type: 'error', text: result.error || 'Failed to initiate payment.' });
-      }
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Network error.' });
-    }
-    setLoading(false);
-  };
 
-  const handlePlanChangeClick = (newPlanId) => {
-    if (!activeTenant) return;
-    const currentPlanId = activeTenant.plan_id || 'starter';
-    const newPlan = getPlanConfig(newPlanId);
-    
-    // Check if it's a downgrade requiring branch deactivation
-    const activeBranchCount = contextBranches.filter(b => b.is_active).length;
-    if (newPlan.branchLimit < activeBranchCount) {
-      setTargetPlan(newPlan);
-      setShowDowngradeModal(true);
-      return;
-    }
 
-    // Otherwise proceed with plan change directly
-    executePlanChange(newPlanId);
-  };
 
-  const executePlanChange = async (newPlanId) => {
-    setLoading(true);
-    setMessage({ type: '', text: '' });
-    
-    // If we have branches to deactivate from the downgrade modal
-    if (branchesToDeactivate.length > 0) {
-      const { error: deactivateError } = await supabase
-        .from('branches')
-        .update({ is_active: false })
-        .in('id', branchesToDeactivate);
-        
-      if (deactivateError) {
-        setMessage({ type: 'error', text: 'Failed to deactivate branches.' });
-        setLoading(false);
-        return;
-      }
-    }
-
-    const { error } = await supabase
-      .from('tenants')
-      .update({ plan_id: newPlanId })
-      .eq('id', activeTenant.id);
-
-    if (error) {
-      setMessage({ type: 'error', text: error.message });
-    } else {
-      setMessage({ type: 'success', text: `Plan successfully changed to ${PLANS[newPlanId].name}!` });
-      setActiveTenant({ ...activeTenant, plan_id: newPlanId });
-      setShowDowngradeModal(false);
-      setBranchesToDeactivate([]);
-      // force reload to update limits
-      window.location.reload();
-    }
-    setLoading(false);
-  };
-
-  const toggleBranchDeactivation = (branchId) => {
-    setBranchesToDeactivate(prev => 
-      prev.includes(branchId) ? prev.filter(id => id !== branchId) : [...prev, branchId]
-    );
-  };
 
   const handleInviteStaff = async (e) => {
     e.preventDefault();
@@ -303,45 +220,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Downgrade Modal */}
-      {showDowngradeModal && targetPlan && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="glass" style={{ width: '100%', maxWidth: '500px', padding: '2rem', borderRadius: '16px' }}>
-            <h2 className="heading-2" style={{ color: 'var(--destructive)', marginBottom: '1rem' }}>Action Required</h2>
-            <p className="text-muted" style={{ marginBottom: '1.5rem' }}>
-              The <strong>{targetPlan.name}</strong> plan only supports {targetPlan.branchLimit} active branch{targetPlan.branchLimit > 1 ? 'es' : ''}. 
-              You currently have {contextBranches.filter(b => b.is_active).length} active branches. 
-              Please select {(contextBranches.filter(b => b.is_active).length - targetPlan.branchLimit)} branch(es) to deactivate before continuing.
-            </p>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem', maxHeight: '200px', overflowY: 'auto' }}>
-              {contextBranches.filter(b => b.is_active).map(b => (
-                <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', cursor: 'pointer' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={branchesToDeactivate.includes(b.id)}
-                    onChange={() => toggleBranchDeactivation(b.id)}
-                    style={{ width: '1.2rem', height: '1.2rem' }}
-                  />
-                  <span>{b.name}</span>
-                </label>
-              ))}
-            </div>
 
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => { setShowDowngradeModal(false); setBranchesToDeactivate([]); }}>Cancel</button>
-              <button 
-                className="btn btn-primary" 
-                onClick={() => executePlanChange(targetPlan.id)}
-                disabled={branchesToDeactivate.length < (contextBranches.filter(b => b.is_active).length - targetPlan.branchLimit)}
-                style={{ backgroundColor: 'var(--destructive)', border: 'none' }}
-              >
-                Confirm Downgrade
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Terminology Tab */}
       {activeTab === 'terminology' && (
@@ -422,36 +301,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div style={{ marginBottom: '2rem' }}>
-              <h3 className="heading-3" style={{ fontSize: '1rem', marginBottom: '1rem' }}>Change Plan</h3>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                {Object.values(PLANS).map(plan => (
-                  <button 
-                    key={plan.id}
-                    className={`btn ${activeTenant?.plan_id === plan.id ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => handlePlanChangeClick(plan.id)}
-                    disabled={activeTenant?.plan_id === plan.id || loading}
-                    style={{ flex: 1 }}
-                  >
-                    {plan.name} <br/>
-                    <small>{plan.priceKsh} Ksh/mo</small>
-                  </button>
-                ))}
-              </div>
-            </div>
 
-            <form onSubmit={initiateSaaSSTKPush} style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', background: 'var(--card)', padding: '1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-              <div style={{ flex: 1 }}>
-                <label className="label">Pay with M-Pesa (Amount: Ksh 2,000 / month)</label>
-                <div style={{ position: 'relative' }}>
-                  <Smartphone size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
-                  <input type="text" name="phone" className="input" placeholder="254712345678" style={{ paddingLeft: '2.5rem' }} required />
-                </div>
-              </div>
-              <button type="submit" className="btn" style={{ backgroundColor: '#25D366', color: '#fff', border: 'none' }} disabled={loading}>
-                {loading ? 'Processing...' : 'Pay via STK Push'}
-              </button>
-            </form>
           </div>
 
           {/* POS STK Push Credentials */}
@@ -507,14 +357,9 @@ export default function SettingsPage() {
               <button 
                 className="btn btn-primary" 
                 onClick={() => alert("Branch creation modal coming soon!")}
-                disabled={!canAddBranch(activeTenant?.plan_id, contextBranches?.filter(b => b.is_active).length)}
-                title={!canAddBranch(activeTenant?.plan_id, contextBranches?.filter(b => b.is_active).length) ? "Branch limit reached for your plan" : ""}
               >
-                {!canAddBranch(activeTenant?.plan_id, contextBranches?.filter(b => b.is_active).length) ? <><Lock size={16}/> Limit Reached</> : 'Add Branch'}
+                Add Branch
               </button>
-              {!canAddBranch(activeTenant?.plan_id, contextBranches?.filter(b => b.is_active).length) && (
-                <span style={{ fontSize: '0.75rem', color: 'var(--destructive)' }}>Upgrade plan to add more branches.</span>
-              )}
             </div>
           </div>
 

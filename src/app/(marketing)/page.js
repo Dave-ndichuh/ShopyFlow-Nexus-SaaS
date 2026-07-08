@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useEffect } from 'react';
@@ -47,7 +47,7 @@ export default function LandingPage() {
                   <li className="scroll-to-section"><a href="#top" className="active">Home</a></li>
                   <li className="scroll-to-section"><a href="#services">Features</a></li>
                   <li className="scroll-to-section"><a href="#about">About</a></li>
-                  <li className="scroll-to-section"><a href="#pricing">Pricing</a></li>
+
                   <li>
                     <div className="gradient-button">
                       <Link href="/login"><i className="fa fa-sign-in-alt"></i> Sign In Now</Link>
@@ -209,79 +209,7 @@ export default function LandingPage() {
         </div>
       </div>
 
-      <div id="pricing" className="pricing-tables">
-        <div className="container">
-          <div className="row">
-            <div className="col-lg-8 offset-lg-2">
-              <div className="section-heading">
-                <h4>Choose The Best <em>Plan</em> For Your Business</h4>
-                <img src="assets/images/heading-line-dec.png" alt="" />
-                <p>Transparent pricing that scales with your operations. No hidden fees.</p>
-              </div>
-            </div>
-            <div className="col-lg-4">
-              <div className="pricing-item-regular">
-                <span className="price">5,000 Ksh</span>
-                <h4>Starter Retail</h4>
-                <div className="icon">
-                  <img src="assets/images/pricing-table-01.png" alt="" />
-                </div>
-                <ul>
-                  <li>1 Store Branch</li>
-                  <li>Unlimited Products</li>
-                  <li>Basic POS Checkouts</li>
-                  <li>Shift Management</li>
-                  <li>Net Profit Analytics</li>
-                  <li>Priority Support</li>
-                </ul>
-                <div className="border-button">
-                  <Link href="/login">Get Started</Link>
-                </div>
-              </div>
-            </div>
-            <div className="col-lg-4">
-              <div className="pricing-item-pro">
-                <span className="price">15,000 Ksh</span>
-                <h4>Business Pro</h4>
-                <div className="icon">
-                  <img src="assets/images/pricing-table-01.png" alt="" />
-                </div>
-                <ul>
-                  <li>Up to 5 Branches</li>
-                  <li>Unlimited Products</li>
-                  <li>Advanced POS &amp; Inventory</li>
-                  <li>Shift &amp; Cash Management</li>
-                  <li>Net Profit Analytics</li>
-                  <li>Dedicated Account Manager</li>
-                </ul>
-                <div className="border-button">
-                  <Link href="/login">Get Started</Link>
-                </div>
-              </div>
-            </div>
-            <div className="col-lg-4">
-              <div className="pricing-item-regular">
-                <span className="price">30,000 Ksh</span>
-                <h4>Enterprise</h4>
-                <div className="icon">
-                  <img src="assets/images/pricing-table-01.png" alt="" />
-                </div>
-                <ul>
-                  <li>Unlimited Branches</li>
-                  <li>Unlimited Products</li>
-                  <li>Full ERP Suite</li>
-                  <li>Advanced Loss Prevention</li>
-                  <li>Custom Integrations</li>
-                  <li>24/7 Dedicated Support</li>
-                </ul>
-                <div className="border-button">
-                  <Link href="/login">Contact Sales</Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div> 
+
 
       <footer id="newsletter">
         <div className="container">
@@ -324,7 +252,7 @@ export default function LandingPage() {
                   <li><a href="#">Home</a></li>
                   <li><a href="#services">Features</a></li>
                   <li><a href="#about">About Architecture</a></li>
-                  <li><a href="#pricing">Pricing</a></li>
+
                 </ul>
               </div>
             </div>

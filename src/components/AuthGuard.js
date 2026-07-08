@@ -44,7 +44,8 @@ export default function AuthProvider({ children }) {
       // Let's just query the public.tenants table. RLS ensures we only see our own tenants!
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (!tenantError && tenantData) {
         setTenants(tenantData);
